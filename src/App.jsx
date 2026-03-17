@@ -2,8 +2,8 @@ import React, { useEffect, useMemo, useState } from "react";
 
 const initialMachines = [
   {
-    machineId: "SV-1165S",
-    machineName: "Jimmy",
+    machineId: "VA0001",
+    machineName: "SC-1165S",
     line: "LineA",
     status: "運轉中",
     output: 194,
@@ -18,8 +18,8 @@ const initialMachines = [
     alerts: [{ time: "09:20", code: "A-101", message: "刀具壽命接近上限" }],
   },
   {
-    machineId: "SV-110S",
-    machineName: "Andy",
+    machineId: "VB0001",
+    machineName: "SV-110S",
     line: "LineA",
     status: "運轉中",
     output: 115,
@@ -34,8 +34,8 @@ const initialMachines = [
     alerts: [],
   },
   {
-    machineId: "SV-76S",
-    machineName: "Tim",
+    machineId: "VC0001",
+    machineName: "SV-76S",
     line: "LineB",
     status: "異常停止",
     output: 187,
@@ -53,8 +53,8 @@ const initialMachines = [
     ],
   },
   {
-    machineId: "NV-8",
-    machineName: "Jerry",
+    machineId: "VD0001",
+    machineName: "NV-8",
     line: "LineB",
     status: "異常停止",
     output: 52,
@@ -69,8 +69,8 @@ const initialMachines = [
     alerts: [{ time: "10:18", code: "E-404", message: "刀具異常停機" }],
   },
   {
-    machineId: "NV-10",
-    machineName: "Apple",
+    machineId: "VE0001",
+    machineName: "NV-10",
     line: "LineC",
     status: "運轉中",
     output: 163,
@@ -85,8 +85,8 @@ const initialMachines = [
     alerts: [{ time: "09:45", code: "A-087", message: "冷卻液液位偏低" }],
   },
   {
-    machineId: "S56-MT",
-    machineName: "Jimmy",
+    machineId: "VF0001",
+    machineName: "S56-MT",
     line: "LineC",
     status: "運轉中",
     output: 128,
