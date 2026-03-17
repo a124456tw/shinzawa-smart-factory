@@ -1,1247 +1,1804 @@
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
-export default function App() {
-  const initialMachines = [
-    { name: "SV-1165", line: "Line A", status: "運轉中", output: 125, util: 86 },
-    { name: "SV-110S", line: "Line A", status: "待機", output: 98, util: 74 },
-    { name: "NV-10", line: "Line A", status: "異常停機", output: 87, util: 61 },
-    { name: "SV-76S", line: "Line B", status: "異常停機", output: 72, util: 58 },
-    { name: "NV-8", line: "Line B", status: "運轉中", output: 90, util: 81 },
-  ];
+const initialMachines = [
+  {
+    machineId: "VA0001",
+    machineName: "SV-1165S",
+    line: "LineA",
+    status: "運轉中",
+    output: 194,
+    utilization: 96,
+    completionTime: "2026/03/17 16:30",
+    reason: "生產穩定進行中",
+    owner: "Jimmy",
+    programName: "Tray盤加工",
+    currentPart: "鋁合金 Tray 盤",
+    productionStartTime: "2026/03/17 08:10",
+    productionQty: 50,
+    alerts: [{ time: "09:20", code: "A-101", message: "刀具壽命接近上限" }],
+  },
+  {
+    machineId: "VB0001",
+    machineName: "SV-110S",
+    line: "LineA",
+    status: "運轉中",
+    output: 115,
+    utilization: 57,
+    completionTime: "2026/03/17 17:10",
+    reason: "加工持續中",
+    owner: "Andy",
+    programName: "壓圈加工",
+    currentPart: "壓圈",
+    productionStartTime: "2026/03/17 07:50",
+    productionQty: 50,
+    alerts: [],
+  },
+  {
+    machineId: "VC0001",
+    machineName: "SV-76S",
+    line: "LineB",
+    status: "異常停止",
+    output: 187,
+    utilization: 85,
+    completionTime: "延遲",
+    reason: "主軸負載過高，設備停機中",
+    owner: "Tim",
+    programName: "載板加工",
+    currentPart: "精密載板",
+    productionStartTime: "2026/03/17 08:20",
+    productionQty: 50,
+    alerts: [
+      { time: "11:24", code: "S-201", message: "工單切換完成" },
+      { time: "11:24", code: "E-118", message: "主軸負載過高" },
+    ],
+  },
+  {
+    machineId: "VD0001",
+    machineName: "NV-8",
+    line: "LineB",
+    status: "異常停止",
+    output: 52,
+    utilization: 20,
+    completionTime: "延遲",
+    reason: "刀具異常磨耗，設備停機中",
+    owner: "Jerry",
+    programName: "瓶胚模",
+    currentPart: "瓶胚模仁",
+    productionStartTime: "2026/03/17 08:05",
+    productionQty: 50,
+    alerts: [{ time: "10:18", code: "E-404", message: "刀具異常停機" }],
+  },
+  {
+    machineId: "VE0001",
+    machineName: "NV-10",
+    line: "LineC",
+    status: "運轉中",
+    output: 163,
+    utilization: 84,
+    completionTime: "2026/03/17 16:10",
+    reason: "正常量產中",
+    owner: "Apple",
+    programName: "Tray盤加工",
+    currentPart: "Tray 盤治具",
+    productionStartTime: "2026/03/17 08:30",
+    productionQty: 50,
+    alerts: [{ time: "09:45", code: "A-087", message: "冷卻液液位偏低" }],
+  },
+  {
+    machineId: "VF0001",
+    machineName: "S56-MT",
+    line: "LineC",
+    status: "運轉中",
+    output: 128,
+    utilization: 82,
+    completionTime: "2026/03/17 17:40",
+    reason: "生產節拍穩定",
+    owner: "Jimmy",
+    programName: "載板加工",
+    currentPart: "半導體載板",
+    productionStartTime: "2026/03/17 07:40",
+    productionQty: 50,
+    alerts: [],
+  },
+];
 
-  const machineAlarmDetails = {
-    "SV-1165": [
-      { time: "14:08", code: "SYS-001", reason: "加工節拍穩定", status: "正常" },
-      { time: "13:42", code: "TEMP-OK", reason: "主軸溫度正常", status: "正常" },
-    ],
-    "SV-110S": [
-      { time: "09:15", code: "MT-002", reason: "待料停機", status: "待處理" },
-      { time: "08:48", code: "JOB-011", reason: "工單切換等待", status: "進行中" },
-    ],
-    "NV-10": [
-      { time: "10:40", code: "AL-014", reason: "刀庫定位異常", status: "待處理" },
-      { time: "10:52", code: "CHK-002", reason: "需檢查換刀機構", status: "進行中" },
-    ],
-    "SV-76S": [
-      { time: "11:25", code: "AL-021", reason: "主軸異常警報", status: "待處理" },
-      { time: "11:42", code: "RST-001", reason: "嘗試復歸重啟", status: "進行中" },
-      { time: "11:58", code: "MT-009", reason: "待料同步確認", status: "待確認" },
-    ],
-    "NV-8": [
-      { time: "13:15", code: "SYS-002", reason: "設備連線正常", status: "正常" },
-      { time: "13:40", code: "OUT-001", reason: "產量穩定提升", status: "正常" },
-    ],
-  };
+const suggestionQuestions = [
+  "哪台稼動率最低？",
+  "哪台產量最高？",
+  "哪些設備異常停止？",
+  "LineA 產量如何？",
+  "NV-8 狀態？",
+];
 
-  const suggestions = [
-    "目前稼動率最低的是哪一台？",
-    "今天哪台機台產量最高？",
-    "有哪些設備發生異常停機？",
-    "Line A 與 Line B 產量差多少？",
-  ];
+const statusColorMap = {
+  運轉中: "#22c55e",
+  待機: "#f59e0b",
+  異常停止: "#ef4444",
+};
 
-  const alarms = [
-    { time: "11:25", machine: "SV-76S", code: "AL-021", msg: "主軸異常警報" },
-    { time: "10:40", machine: "NV-10", code: "AL-014", msg: "刀庫定位異常" },
-    { time: "09:15", machine: "SV-110S", code: "MT-002", msg: "待料停機" },
-  ];
+const alertTemplates = [
+  { code: "A-101", message: "刀具壽命接近上限" },
+  { code: "A-087", message: "冷卻液液位偏低" },
+  { code: "E-404", message: "刀具異常停機" },
+  { code: "E-118", message: "主軸負載過高" },
+  { code: "S-201", message: "工單切換完成" },
+];
 
+function App() {
   const [machines, setMachines] = useState(initialMachines);
+  const [selectedMachine, setSelectedMachine] = useState(null);
+  const [viewMode, setViewMode] = useState("factory");
+  const [selectedLine, setSelectedLine] = useState("LineA");
   const [now, setNow] = useState(new Date());
-  const [selectedMachineName, setSelectedMachineName] = useState(null);
-  const [isDetailOpen, setIsDetailOpen] = useState(false);
-  const [searchInput, setSearchInput] = useState("");
+  const [searchKeyword, setSearchKeyword] = useState("");
   const [aiInput, setAiInput] = useState("");
-  const [currentQuestion, setCurrentQuestion] = useState("目前稼動率最低的是哪一台？");
-  const [currentAnswer, setCurrentAnswer] = useState("");
-  const [windowWidth, setWindowWidth] = useState(typeof window !== "undefined" ? window.innerWidth : 1400);
+  const [chatHistory, setChatHistory] = useState([
+    {
+      role: "assistant",
+      text: "您好，我是 SHINZAWA AI 工廠助理。您可以詢問整廠、產線、機台狀態、產量、稼動率與警報資訊。",
+    },
+  ]);
+
+  const lines = useMemo(
+    () => [...new Set(machines.map((machine) => machine.line))],
+    [machines]
+  );
+
+  const filteredMachines = useMemo(() => {
+    const baseMachines =
+      viewMode === "factory"
+        ? machines
+        : machines.filter((machine) => machine.line === selectedLine);
+
+    if (!searchKeyword.trim()) return baseMachines;
+
+    const keyword = searchKeyword.trim().toLowerCase();
+    return baseMachines.filter((machine) => {
+      return (
+        machine.machineId.toLowerCase().includes(keyword) ||
+        machine.machineName.toLowerCase().includes(keyword) ||
+        machine.line.toLowerCase().includes(keyword) ||
+        machine.status.toLowerCase().includes(keyword) ||
+        machine.owner.toLowerCase().includes(keyword) ||
+        machine.programName.toLowerCase().includes(keyword)
+      );
+    });
+  }, [machines, viewMode, selectedLine, searchKeyword]);
+
+  const selectedLineMachines = useMemo(() => {
+    return machines.filter((machine) => machine.line === selectedLine);
+  }, [machines, selectedLine]);
+
+  const lineSummary = useMemo(() => {
+    const running = selectedLineMachines.filter(
+      (machine) => machine.status === "運轉中"
+    ).length;
+    const idle = selectedLineMachines.filter(
+      (machine) => machine.status === "待機"
+    ).length;
+    const abnormal = selectedLineMachines.filter(
+      (machine) => machine.status === "異常停止"
+    ).length;
+    const totalOutput = selectedLineMachines.reduce(
+      (sum, machine) => sum + machine.output,
+      0
+    );
+    const avgUtilization = selectedLineMachines.length
+      ? Math.round(
+          selectedLineMachines.reduce(
+            (sum, machine) => sum + machine.utilization,
+            0
+          ) / selectedLineMachines.length
+        )
+      : 0;
+
+    return {
+      running,
+      idle,
+      abnormal,
+      totalOutput,
+      avgUtilization,
+    };
+  }, [selectedLineMachines]);
+
+  const overallSummary = useMemo(() => {
+    const running = machines.filter((m) => m.status === "運轉中").length;
+    const idle = machines.filter((m) => m.status === "待機").length;
+    const abnormal = machines.filter((m) => m.status === "異常停止").length;
+    const totalOutput = machines.reduce((sum, m) => sum + m.output, 0);
+    const avgUtilization = machines.length
+      ? Math.round(
+          machines.reduce((sum, m) => sum + m.utilization, 0) / machines.length
+        )
+      : 0;
+
+    return {
+      running,
+      idle,
+      abnormal,
+      totalOutput,
+      avgUtilization,
+    };
+  }, [machines]);
+
+  const alertList = useMemo(() => {
+    return machines
+      .flatMap((machine) =>
+        machine.alerts.map((alert) => ({
+          ...alert,
+          machineId: machine.machineId,
+          machineName: machine.machineName,
+          line: machine.line,
+          status: machine.status,
+        }))
+      )
+      .sort((a, b) => b.time.localeCompare(a.time))
+      .slice(0, 8);
+  }, [machines]);
+
+  const selectedMachineIndex = useMemo(() => {
+    if (!selectedMachine) return -1;
+    return machines.findIndex(
+      (machine) => machine.machineId === selectedMachine.machineId
+    );
+  }, [machines, selectedMachine]);
 
   useEffect(() => {
-    const resizeHandler = () => setWindowWidth(window.innerWidth);
-    window.addEventListener("resize", resizeHandler);
-    return () => window.removeEventListener("resize", resizeHandler);
-  }, []);
-
-  useEffect(() => {
-    const clockTimer = setInterval(() => {
+    const timer = setInterval(() => {
       setNow(new Date());
     }, 1000);
-    return () => clearInterval(clockTimer);
+
+    return () => clearInterval(timer);
   }, []);
 
   useEffect(() => {
-    const dataTimer = setInterval(() => {
-      setMachines((prev) =>
-        prev.map((machine) => {
-          let newOutput = machine.output;
-          let newUtil = machine.util;
-          let newStatus = machine.status;
+    const simulationTimer = setInterval(() => {
+      setMachines((prevMachines) =>
+        prevMachines.map((machine) => {
+          const random = Math.random();
+          let nextStatus = machine.status;
 
-          if (machine.status === "運轉中") {
-            newOutput += Math.floor(Math.random() * 3);
-            newUtil = Math.min(95, Math.max(70, machine.util + (Math.random() > 0.5 ? 1 : -1)));
+          if (random < 0.08) {
+            const statusPool = ["運轉中", "待機", "異常停止"];
+            nextStatus =
+              statusPool[Math.floor(Math.random() * statusPool.length)];
           }
 
-          if (machine.status === "待機") {
-            newUtil = Math.min(80, Math.max(60, machine.util + (Math.random() > 0.5 ? 1 : -1)));
-          }
+          let output = machine.output;
+          let utilization = machine.utilization;
+          let reason = machine.reason;
+          let alerts = [...machine.alerts];
 
-          if (machine.status === "異常停機") {
-            newUtil = Math.min(65, Math.max(45, machine.util + (Math.random() > 0.5 ? 1 : -1)));
-          }
+          if (nextStatus === "運轉中") {
+            output = output + Math.floor(Math.random() * 4);
+            utilization = Math.min(
+              96,
+              utilization + Math.floor(Math.random() * 3)
+            );
+            reason = ["生產穩定進行中", "正常量產中", "加工節拍穩定"][
+              Math.floor(Math.random() * 3)
+            ];
+          } else if (nextStatus === "待機") {
+            utilization = Math.max(
+              45,
+              utilization - Math.floor(Math.random() * 3)
+            );
+            reason = ["等待下一批工單", "等待品檢完成", "等待換線作業"][
+              Math.floor(Math.random() * 3)
+            ];
+          } else if (nextStatus === "異常停止") {
+            utilization = Math.max(
+              20,
+              utilization - Math.floor(Math.random() * 4)
+            );
+            reason = ["刀具異常磨耗，設備停機中", "主軸負載過高，等待確認", "夾治具異常，暫停加工"][
+              Math.floor(Math.random() * 3)
+            ];
 
-          const roll = Math.random();
-
-          if (machine.name === "SV-110S" && roll > 0.93) {
-            newStatus = machine.status === "待機" ? "運轉中" : "待機";
-          }
-          if (machine.name === "NV-10" && roll > 0.96) {
-            newStatus = machine.status === "異常停機" ? "待機" : "異常停機";
-          }
-          if (machine.name === "SV-76S" && roll > 0.97) {
-            newStatus = machine.status === "異常停機" ? "待機" : "異常停機";
+            if (Math.random() < 0.25) {
+              const pickedAlert =
+                alertTemplates[Math.floor(Math.random() * alertTemplates.length)];
+              alerts = [
+                {
+                  time: formatTime(new Date()),
+                  code: pickedAlert.code,
+                  message: pickedAlert.message,
+                },
+                ...alerts,
+              ].slice(0, 5);
+            }
           }
 
           return {
             ...machine,
-            output: newOutput,
-            util: newUtil,
-            status: newStatus,
+            status: nextStatus,
+            output,
+            utilization,
+            reason,
+            alerts,
           };
         })
       );
-    }, 3000);
+    }, 3500);
 
-    return () => clearInterval(dataTimer);
+    return () => clearInterval(simulationTimer);
   }, []);
 
-  const isMobile = windowWidth <= 768;
-  const isTablet = windowWidth > 768 && windowWidth <= 1100;
-
-  const selectedMachine = useMemo(() => {
-    if (!selectedMachineName) return null;
-    return machines.find((m) => m.name === selectedMachineName) || null;
-  }, [machines, selectedMachineName]);
-
-  const selectedMachineIndex = useMemo(() => {
-    if (!selectedMachine) return -1;
-    return machines.findIndex((m) => m.name === selectedMachine.name);
+  useEffect(() => {
+    if (!selectedMachine) return;
+    const latest = machines.find(
+      (machine) => machine.machineId === selectedMachine.machineId
+    );
+    if (latest) {
+      setSelectedMachine(latest);
+    }
   }, [machines, selectedMachine]);
 
-  const prevMachine = selectedMachineIndex > 0 ? machines[selectedMachineIndex - 1] : null;
-  const nextMachine =
-    selectedMachineIndex >= 0 && selectedMachineIndex < machines.length - 1
-      ? machines[selectedMachineIndex + 1]
-      : null;
-
-  const totalOutput = useMemo(() => machines.reduce((sum, m) => sum + m.output, 0), [machines]);
-
-  const avgUtil = useMemo(() => {
-    const total = machines.reduce((sum, m) => sum + m.util, 0);
-    return (total / machines.length).toFixed(1);
-  }, [machines]);
-
-  const abnormalMachines = useMemo(() => machines.filter((m) => m.status === "異常停機"), [machines]);
-  const abnormalCount = abnormalMachines.length;
-  const idleCount = machines.filter((m) => m.status === "待機").length;
-  const runningCount = machines.filter((m) => m.status === "運轉中").length;
-
-  const lowestUtilMachine = useMemo(() => [...machines].sort((a, b) => a.util - b.util)[0], [machines]);
-  const topOutputMachine = useMemo(() => [...machines].sort((a, b) => b.output - a.output)[0], [machines]);
-  const topOutputMachines = useMemo(() => [...machines].sort((a, b) => b.output - a.output).slice(0, 4), [machines]);
-
-  const lineAOutput = useMemo(
-    () => machines.filter((m) => m.line === "Line A").reduce((sum, m) => sum + m.output, 0),
-    [machines]
-  );
-  const lineBOutput = useMemo(
-    () => machines.filter((m) => m.line === "Line B").reduce((sum, m) => sum + m.output, 0),
-    [machines]
-  );
-
-  const outputDiff = Math.abs(lineAOutput - lineBOutput);
-  const higherLine = lineAOutput >= lineBOutput ? "Line A" : "Line B";
-
-  const selectedMachineDetail = useMemo(() => {
-    if (!selectedMachine) return null;
-
-    const reasons = {
-      "運轉中": "正常加工中，節拍穩定",
-      "待機": "待料 / 排程等待",
-      "異常停機": "警報或加工中斷待處理",
-    };
-
-    const actions = {
-      "運轉中": "持續監控節拍與刀具壽命",
-      "待機": "確認待料原因與工單排程",
-      "異常停機": "優先檢查警報碼、機構與程式設定",
-    };
-
-    return {
-      reason: reasons[selectedMachine.status],
-      action: actions[selectedMachine.status],
-      estimatedDowntime:
-        selectedMachine.status === "異常停機"
-          ? "2 小時 10 分"
-          : selectedMachine.status === "待機"
-          ? "35 分"
-          : "0 分",
-      alarmHistory: machineAlarmDetails[selectedMachine.name] || [],
-    };
-  }, [selectedMachine]);
-
-  const getStatusColor = (status) => {
-    if (status === "運轉中") return "#22c55e";
-    if (status === "待機") return "#f59e0b";
-    if (status === "異常停機") return "#ef4444";
-    return "#64748b";
+  const handleOpenMachine = (machine) => {
+    setSelectedMachine(machine);
   };
 
-  const getBarColor = (value) => {
-    if (value >= 80) return "#22c55e";
-    if (value >= 65) return "#f59e0b";
-    return "#ef4444";
+  const handlePrevMachine = () => {
+    if (selectedMachineIndex <= 0) {
+      setSelectedMachine(machines[machines.length - 1]);
+      return;
+    }
+    setSelectedMachine(machines[selectedMachineIndex - 1]);
   };
 
-  const getAlarmStatusColor = (status) => {
-    if (status === "正常") return "#22c55e";
-    if (status === "進行中") return "#f59e0b";
-    if (status === "待處理") return "#ef4444";
-    if (status === "待確認") return "#38bdf8";
-    return "#94a3b8";
+  const handleNextMachine = () => {
+    if (
+      selectedMachineIndex === -1 ||
+      selectedMachineIndex === machines.length - 1
+    ) {
+      setSelectedMachine(machines[0]);
+      return;
+    }
+    setSelectedMachine(machines[selectedMachineIndex + 1]);
   };
 
-  const formatDateTime = (date) => {
-    const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, "0");
-    const d = String(date.getDate()).padStart(2, "0");
-    const hh = String(date.getHours()).padStart(2, "0");
-    const mm = String(date.getMinutes()).padStart(2, "0");
-    const ss = String(date.getSeconds()).padStart(2, "0");
-    return `${y}/${m}/${d} ${hh}:${mm}:${ss}`;
-  };
+  const submitAI = (forcedQuestion) => {
+    const question = (forcedQuestion ?? aiInput).trim();
+    if (!question) return;
 
-  const sectionTitleStyle = {
-    marginTop: 0,
-    marginBottom: "8px",
-    color: "white",
-    fontSize: isMobile ? "22px" : "26px",
-    fontWeight: "700",
-    letterSpacing: "0.5px",
-  };
+    const answer = generateAIResponse(question, machines, lines);
 
-  const cardStyle = {
-    background: "#0f1b2d",
-    borderRadius: "18px",
-    padding: isMobile ? "16px" : "24px",
-    border: "1px solid #1f2f46",
-  };
+    setChatHistory((prev) => [
+      ...prev,
+      { role: "user", text: question },
+      { role: "assistant", text: answer },
+    ]);
 
-  const buildAiAnswer = (questionRaw) => {
-    const question = questionRaw.trim();
-    const q = question.toUpperCase();
-
-    if (!question) {
-      return "請輸入想查詢的問題，例如：哪台稼動率最低、NV-10 狀態、Line A 產量。";
-    }
-
-    if (q.includes("最低") && (q.includes("稼動") || q.includes("OEE"))) {
-      return `目前稼動率最低設備為 ${lowestUtilMachine.name}，當前稼動率為 ${lowestUtilMachine.util}%，狀態為 ${lowestUtilMachine.status}。`;
-    }
-
-    if ((q.includes("最高") && q.includes("產量")) || q.includes("產量最高")) {
-      return `目前產量最高設備為 ${topOutputMachine.name}，今日累計產量為 ${topOutputMachine.output} 件，所在線別為 ${topOutputMachine.line}。`;
-    }
-
-    if (q.includes("異常") || q.includes("停機")) {
-      if (abnormalMachines.length === 0) {
-        return "目前沒有設備處於異常停機狀態。";
-      }
-      return `目前異常停機設備共有 ${abnormalMachines.length} 台，分別為：${abnormalMachines.map((m) => m.name).join("、")}。`;
-    }
-
-    if ((q.includes("LINE A") || q.includes("LINEA")) && q.includes("產量")) {
-      return `Line A 目前累計產量為 ${lineAOutput} 件。`;
-    }
-
-    if ((q.includes("LINE B") || q.includes("LINEB")) && q.includes("產量")) {
-      return `Line B 目前累計產量為 ${lineBOutput} 件。`;
-    }
-
-    if ((q.includes("LINE A") || q.includes("LINEA") || q.includes("LINE B") || q.includes("LINEB")) && (q.includes("差") || q.includes("比較"))) {
-      return `目前 ${higherLine} 產量較高。Line A 為 ${lineAOutput} 件，Line B 為 ${lineBOutput} 件，差距為 ${outputDiff} 件。`;
-    }
-
-    const matchedMachine = machines.find((m) => q.includes(m.name.toUpperCase()));
-    if (matchedMachine) {
-      const alarmHistory = machineAlarmDetails[matchedMachine.name] || [];
-      const latestAlarm = alarmHistory[0];
-
-      if (q.includes("狀態")) {
-        return `${matchedMachine.name} 目前狀態為 ${matchedMachine.status}，稼動率 ${matchedMachine.util}%，今日產量 ${matchedMachine.output} 件。`;
-      }
-
-      if (q.includes("產量")) {
-        return `${matchedMachine.name} 今日產量為 ${matchedMachine.output} 件。`;
-      }
-
-      if (q.includes("稼動") || q.includes("OEE")) {
-        return `${matchedMachine.name} 目前稼動率為 ${matchedMachine.util}%。`;
-      }
-
-      if (q.includes("警報") || q.includes("原因")) {
-        if (!latestAlarm) {
-          return `${matchedMachine.name} 目前沒有警報紀錄。`;
-        }
-        return `${matchedMachine.name} 最近警報時間為 ${latestAlarm.time}，警報代碼 ${latestAlarm.code}，原因為「${latestAlarm.reason}」，目前狀態為 ${latestAlarm.status}。`;
-      }
-
-      return `${matchedMachine.name} 目前狀態為 ${matchedMachine.status}，稼動率 ${matchedMachine.util}%，今日產量 ${matchedMachine.output} 件。`;
-    }
-
-    return "目前這版 AI 助理支援：稼動率最低、產量最高、異常停機、Line A/Line B 產量比較，以及指定機台的狀態、產量、稼動率與警報查詢。";
-  };
-
-  useEffect(() => {
-    setCurrentAnswer(buildAiAnswer(currentQuestion));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [machines]);
-
-  const handleAiSubmit = (text) => {
-    const content = text.trim();
-    if (!content) return;
-    setCurrentQuestion(content);
-    setCurrentAnswer(buildAiAnswer(content));
     setAiInput("");
   };
 
-  const openMachineDetail = (name) => {
-    setSelectedMachineName(name);
-    setSearchInput(name);
-    setIsDetailOpen(true);
+  const handleAIQuestion = (question) => {
+    setAiInput(question);
+    submitAI(question);
   };
 
-  const closeMachineDetail = () => {
-    setIsDetailOpen(false);
-  };
-
-  const handleSearch = () => {
-    const keyword = searchInput.trim().toUpperCase();
-    if (!keyword) return;
-    const found = machines.find((m) => m.name.toUpperCase() === keyword);
-    if (found) {
-      setSelectedMachineName(found.name);
-    }
-  };
-
-  const goPrevMachine = () => {
-    if (prevMachine) {
-      setSelectedMachineName(prevMachine.name);
-      setSearchInput(prevMachine.name);
-    }
-  };
-
-  const goNextMachine = () => {
-    if (nextMachine) {
-      setSelectedMachineName(nextMachine.name);
-      setSearchInput(nextMachine.name);
-    }
-  };
-
-  const MachineTile = ({ machine }) => (
-    <button
-      onClick={() => openMachineDetail(machine.name)}
-      style={{
-        background: "linear-gradient(180deg, #1a2b41 0%, #142338 100%)",
-        borderRadius: "18px",
-        border: `1px solid ${getStatusColor(machine.status)}`,
-        minHeight: isMobile ? "220px" : "260px",
-        padding: isMobile ? "14px" : "16px",
-        boxShadow: "0 12px 30px rgba(0,0,0,0.22)",
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "space-between",
-        cursor: "pointer",
-        textAlign: "left",
-      }}
-    >
-      <div>
-        <div
-          style={{
-            color: "white",
-            fontSize: isMobile ? "26px" : "30px",
-            fontWeight: 700,
-            lineHeight: 1.1,
-            wordBreak: "break-word",
-          }}
-        >
-          {machine.name}
-        </div>
-
-        <div
-          style={{
-            color: "#93c5fd",
-            fontSize: "14px",
-            marginTop: "6px",
-          }}
-        >
-          {machine.line}
-        </div>
-      </div>
-
-      <div
-        style={{
-          marginTop: "14px",
-          display: "inline-flex",
-          alignSelf: "flex-start",
-          background: getStatusColor(machine.status),
-          color: "white",
-          borderRadius: "999px",
-          padding: "6px 12px",
-          fontSize: "12px",
-          fontWeight: 700,
-        }}
-      >
-        {machine.status}
-      </div>
-
-      <div
-        style={{
-          marginTop: "16px",
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: "10px",
-        }}
-      >
-        <div
-          style={{
-            background: "#0b1220",
-            borderRadius: "12px",
-            padding: "12px",
-            border: "1px solid #24354e",
-          }}
-        >
-          <div style={{ color: "#cbd5e1", fontSize: "12px", marginBottom: "6px" }}>
-            今日產量
-          </div>
-          <div style={{ color: "white", fontSize: isMobile ? "20px" : "22px", fontWeight: 700, lineHeight: 1.1 }}>
-            {machine.output}
-          </div>
-          <div style={{ color: "#94a3b8", fontSize: "12px", marginTop: "4px" }}>件</div>
-        </div>
-
-        <div
-          style={{
-            background: "#0b1220",
-            borderRadius: "12px",
-            padding: "12px",
-            border: "1px solid #24354e",
-          }}
-        >
-          <div style={{ color: "#cbd5e1", fontSize: "12px", marginBottom: "6px" }}>
-            稼動率
-          </div>
-          <div style={{ color: "white", fontSize: isMobile ? "20px" : "22px", fontWeight: 700, lineHeight: 1.1 }}>
-            {machine.util}%
-          </div>
-          <div style={{ color: "#94a3b8", fontSize: "12px", marginTop: "4px" }}>OEE</div>
-        </div>
-      </div>
-
-      <div style={{ marginTop: "16px" }}>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            marginBottom: "6px",
-          }}
-        >
-          <span style={{ color: "#cbd5e1", fontSize: "12px" }}>運行指標</span>
-          <span style={{ color: "white", fontSize: "12px", fontWeight: 700 }}>
-            {machine.util}%
-          </span>
-        </div>
-
-        <div
-          style={{
-            background: "#09111d",
-            height: "10px",
-            borderRadius: "999px",
-            overflow: "hidden",
-          }}
-        >
-          <div
-            style={{
-              width: `${machine.util}%`,
-              height: "100%",
-              background: getBarColor(machine.util),
-              borderRadius: "999px",
-            }}
-          />
-        </div>
-      </div>
-    </button>
-  );
-
-  const kpis = [
-    { label: "今日稼動率", value: `${avgUtil}%`, sub: "即時模擬更新中" },
-    { label: "今日總產量", value: `${totalOutput} 件`, sub: lineAOutput >= lineBOutput ? "Line A 表現最佳" : "Line B 表現最佳" },
-    { label: "停機設備數", value: `${abnormalCount} 台`, sub: `${lowestUtilMachine.name} 稼動率最低` },
-    { label: "待機設備數", value: `${idleCount} 台`, sub: `在線設備 ${runningCount} 台` },
-  ];
+  const displaySummary =
+    viewMode === "factory" ? overallSummary : lineSummary;
+  const displaySummaryTitle =
+    viewMode === "factory" ? "整廠總覽" : `${selectedLine} 產線摘要`;
 
   return (
-    <>
-      <div
-        style={{
-          background: "linear-gradient(180deg, #06101f 0%, #081224 100%)",
-          color: "white",
-          minHeight: "100vh",
-          padding: isMobile ? "14px" : "28px",
-          fontFamily: "Arial, Microsoft JhengHei, sans-serif",
-        }}
-      >
-        <div style={{ maxWidth: "1520px", margin: "0 auto" }}>
-          <div
-            style={{
-              display: "flex",
-              flexDirection: isMobile ? "column" : "row",
-              justifyContent: "space-between",
-              alignItems: isMobile ? "flex-start" : "center",
-              gap: isMobile ? "14px" : "0",
-              marginBottom: "24px",
-              padding: isMobile ? "16px" : "20px 24px",
-              background: "#0b1628",
-              borderRadius: "18px",
-              border: "1px solid #1e293b",
-            }}
-          >
-            <div style={{ width: "100%" }}>
-              <h1
-                style={{
-                  margin: 0,
-                  color: "white",
-                  fontSize: isMobile ? "30px" : "38px",
-                  fontWeight: "700",
-                  letterSpacing: "1px",
-                  lineHeight: 1.15,
-                }}
-              >
-                SHINZAWA Smart Factory
-              </h1>
-              <div style={{ marginTop: "8px", color: "#cbd5e1", fontSize: isMobile ? "13px" : "15px" }}>
-                震澤智慧工廠系統｜AI 半對話展示版
-              </div>
-            </div>
+    <div style={styles.app}>
+      <div style={styles.backgroundGlowOne} />
+      <div style={styles.backgroundGlowTwo} />
 
-            <div style={{ textAlign: isMobile ? "left" : "right", width: isMobile ? "100%" : "auto" }}>
-              <div style={{ color: "#94a3b8", fontSize: "13px", marginBottom: "4px" }}>系統時間</div>
-              <div style={{ color: "white", fontSize: isMobile ? "18px" : "20px", fontWeight: "700" }}>
-                {formatDateTime(now)}
-              </div>
-              <div style={{ color: "#38bdf8", fontSize: "13px", marginTop: "4px" }}>
-                Demo / AI Semi-Chat 模式
-              </div>
+      <header style={styles.header}>
+        <div>
+          <div style={styles.brandRow}>
+            <div style={styles.logoBadge}>S</div>
+            <div>
+              <h1 style={styles.title}>SHINZAWA Smart Factory</h1>
+              <div style={styles.subtitle}>震澤智慧工廠展示系統 v1.0</div>
             </div>
           </div>
+        </div>
 
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: isMobile ? "1fr" : isTablet ? "1fr 1fr" : "repeat(4, 1fr)",
-              gap: "16px",
-              marginBottom: "24px",
-            }}
-          >
-            {kpis.map((item) => (
-              <div
-                key={item.label}
-                style={{
-                  background: "#122033",
-                  borderRadius: "16px",
-                  padding: isMobile ? "16px" : "20px",
-                  border: "1px solid #1f2f46",
-                  boxShadow: "0 8px 24px rgba(0,0,0,0.2)",
-                }}
-              >
-                <div style={{ color: "#cbd5e1", fontSize: "14px", marginBottom: "10px" }}>{item.label}</div>
-                <div
-                  style={{
-                    fontSize: isMobile ? "30px" : "34px",
-                    fontWeight: "700",
-                    marginBottom: "8px",
-                    color: "white",
-                  }}
-                >
-                  {item.value}
-                </div>
-                <div style={{ color: "#38bdf8", fontSize: "14px" }}>{item.sub}</div>
-              </div>
-            ))}
-          </div>
+        <div style={styles.timeCard}>
+          <div style={styles.timeLabel}>系統時間</div>
+          <div style={styles.timeValue}>{formatDateTime(now)}</div>
+        </div>
+      </header>
 
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: isMobile || isTablet ? "1fr" : "1.9fr 1fr",
-              gap: "24px",
-            }}
-          >
-            <div style={{ display: "grid", gap: "24px" }}>
-              <div style={cardStyle}>
-                <h2 style={sectionTitleStyle}>3D / 平面產線監控</h2>
-                <p style={{ color: "#cbd5e1", marginTop: 0, marginBottom: "18px", fontSize: "15px" }}>
-                  點擊任一機台卡片後，會彈出詳細資訊視窗，顯示警報明細與處理狀態。
-                </p>
+      <section style={styles.kpiGrid}>
+        <div style={styles.kpiCard}>
+          <div style={styles.kpiLabel}>總機台數</div>
+          <div style={styles.kpiValue}>{machines.length}</div>
+        </div>
+        <div style={styles.kpiCard}>
+          <div style={styles.kpiLabel}>運轉中</div>
+          <div style={styles.kpiValue}>{overallSummary.running}</div>
+        </div>
+        <div style={styles.kpiCard}>
+          <div style={styles.kpiLabel}>待機</div>
+          <div style={styles.kpiValue}>{overallSummary.idle}</div>
+        </div>
+        <div style={styles.kpiCard}>
+          <div style={styles.kpiLabel}>異常停止</div>
+          <div style={styles.kpiValue}>{overallSummary.abnormal}</div>
+        </div>
+        <div style={styles.kpiCard}>
+          <div style={styles.kpiLabel}>今日總產量</div>
+          <div style={styles.kpiValue}>{overallSummary.totalOutput}</div>
+        </div>
+        <div style={styles.kpiCard}>
+          <div style={styles.kpiLabel}>平均稼動率</div>
+          <div style={styles.kpiValue}>{overallSummary.avgUtilization}%</div>
+        </div>
+      </section>
 
-                <div
-                  style={{
-                    background: "linear-gradient(180deg, #091321 0%, #0b1422 100%)",
-                    borderRadius: "20px",
-                    padding: isMobile ? "14px" : "24px",
-                    border: "1px solid #223550",
-                    minHeight: isMobile ? "auto" : "560px",
-                    position: "relative",
-                    overflow: "hidden",
-                  }}
-                >
-                  <div
-                    style={{
-                      position: "absolute",
-                      inset: 0,
-                      backgroundImage:
-                        "linear-gradient(rgba(51,65,85,0.18) 1px, transparent 1px), linear-gradient(90deg, rgba(51,65,85,0.18) 1px, transparent 1px)",
-                      backgroundSize: "36px 36px",
-                      opacity: 0.5,
-                    }}
-                  />
-
-                  <div style={{ position: "relative", zIndex: 1 }}>
-                    <div
-                      style={{
-                        display: "flex",
-                        flexDirection: isMobile ? "column" : "row",
-                        justifyContent: "space-between",
-                        alignItems: isMobile ? "flex-start" : "center",
-                        gap: "8px",
-                        marginBottom: "18px",
-                      }}
-                    >
-                      <div style={{ color: "white", fontSize: isMobile ? "20px" : "22px", fontWeight: 700 }}>
-                        Factory Layout
-                      </div>
-                      <div style={{ color: "#93c5fd", fontSize: "14px" }}>SHINZAWA Demo Plant</div>
-                    </div>
-
-                    <div
-                      style={{
-                        background: "rgba(59,130,246,0.08)",
-                        border: "1px solid rgba(59,130,246,0.22)",
-                        borderRadius: "18px",
-                        padding: isMobile ? "14px" : "18px",
-                        marginBottom: "20px",
-                      }}
-                    >
-                      <div
-                        style={{
-                          color: "white",
-                          fontSize: isMobile ? "18px" : "20px",
-                          fontWeight: 700,
-                          marginBottom: "12px",
-                          textAlign: "center",
-                        }}
-                      >
-                        Line A
-                      </div>
-
-                      <div
-                        style={{
-                          display: "grid",
-                          gridTemplateColumns: isMobile ? "1fr" : isTablet ? "1fr 1fr" : "repeat(3, minmax(220px, 1fr))",
-                          gap: "16px",
-                        }}
-                      >
-                        {machines.filter((m) => m.line === "Line A").map((machine) => (
-                          <MachineTile key={machine.name} machine={machine} />
-                        ))}
-                      </div>
-                    </div>
-
-                    <div
-                      style={{
-                        background: "rgba(16,185,129,0.06)",
-                        border: "1px solid rgba(16,185,129,0.18)",
-                        borderRadius: "18px",
-                        padding: isMobile ? "14px" : "18px",
-                      }}
-                    >
-                      <div
-                        style={{
-                          color: "white",
-                          fontSize: isMobile ? "18px" : "20px",
-                          fontWeight: 700,
-                          marginBottom: "12px",
-                          textAlign: "center",
-                        }}
-                      >
-                        Line B
-                      </div>
-
-                      <div
-                        style={{
-                          display: "grid",
-                          gridTemplateColumns: isMobile ? "1fr" : isTablet ? "1fr 1fr" : "repeat(3, minmax(220px, 1fr))",
-                          gap: "16px",
-                        }}
-                      >
-                        {machines.filter((m) => m.line === "Line B").map((machine) => (
-                          <MachineTile key={machine.name} machine={machine} />
-                        ))}
-
-                        <div
-                          style={{
-                            borderRadius: "18px",
-                            border: "1px dashed #334155",
-                            minHeight: isMobile ? "120px" : "260px",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            color: "#64748b",
-                            fontWeight: 700,
-                            background: "rgba(15,23,42,0.5)",
-                          }}
-                        >
-                          Reserved
-                        </div>
-                      </div>
-                    </div>
-
-                    <div
-                      style={{
-                        marginTop: "20px",
-                        display: "grid",
-                        gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr 1fr",
-                        gap: "16px",
-                      }}
-                    >
-                      <div
-                        style={{
-                          background: "#101b2d",
-                          borderRadius: "14px",
-                          padding: "14px",
-                          border: "1px solid #23344d",
-                        }}
-                      >
-                        <div style={{ color: "#94a3b8", fontSize: "13px" }}>AGV / 物流區</div>
-                        <div style={{ color: "white", fontSize: "18px", fontWeight: 700, marginTop: "6px" }}>
-                          待整合
-                        </div>
-                      </div>
-
-                      <div
-                        style={{
-                          background: "#101b2d",
-                          borderRadius: "14px",
-                          padding: "14px",
-                          border: "1px solid #23344d",
-                        }}
-                      >
-                        <div style={{ color: "#94a3b8", fontSize: "13px" }}>檢驗區</div>
-                        <div style={{ color: "white", fontSize: "18px", fontWeight: 700, marginTop: "6px" }}>
-                          PMC / 品檢站
-                        </div>
-                      </div>
-
-                      <div
-                        style={{
-                          background: "#101b2d",
-                          borderRadius: "14px",
-                          padding: "14px",
-                          border: "1px solid #23344d",
-                        }}
-                      >
-                        <div style={{ color: "#94a3b8", fontSize: "13px" }}>數據模式</div>
-                        <div style={{ color: "white", fontSize: "18px", fontWeight: 700, marginTop: "6px" }}>
-                          Live Demo
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
-                  gap: "24px",
-                }}
-              >
-                <div style={cardStyle}>
-                  <h3 style={{ marginTop: 0, marginBottom: "10px", color: "white", fontSize: "22px", fontWeight: 700 }}>
-                    即時警報列表
-                  </h3>
-                  <div style={{ color: "#cbd5e1", fontSize: "14px", marginBottom: "10px" }}>
-                    最近設備警報與停機事件
-                  </div>
-
-                  {alarms.map((item) => (
-                    <div
-                      key={`${item.time}-${item.machine}`}
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns: isMobile ? "1fr" : "80px 100px 90px 1fr",
-                        gap: "10px",
-                        background: "#16253a",
-                        borderRadius: "12px",
-                        padding: "14px",
-                        marginTop: "12px",
-                        alignItems: "center",
-                      }}
-                    >
-                      <div style={{ color: "#fca5a5", fontWeight: 700 }}>{item.time}</div>
-                      <div style={{ color: "white", fontWeight: 700 }}>{item.machine}</div>
-                      <div style={{ color: "#93c5fd" }}>{item.code}</div>
-                      <div style={{ color: "#e5e7eb" }}>{item.msg}</div>
-                    </div>
-                  ))}
-                </div>
-
-                <div style={cardStyle}>
-                  <h3 style={{ marginTop: 0, marginBottom: "10px", color: "white", fontSize: "22px", fontWeight: 700 }}>
-                    導入路徑
-                  </h3>
-
-                  {[
-                    ["A 階段", "展示版 Dashboard / 平面監控"],
-                    ["B 階段", "模擬即時資料與互動查詢"],
-                    ["C 階段", "串接 CNC / PLC / OPC UA"],
-                  ].map(([phase, desc]) => (
-                    <div
-                      key={phase}
-                      style={{
-                        background: "#16253a",
-                        borderRadius: "14px",
-                        padding: "16px",
-                        marginTop: "12px",
-                      }}
-                    >
-                      <div style={{ color: "#38bdf8", fontSize: "14px", fontWeight: 700 }}>{phase}</div>
-                      <div style={{ color: "white", fontSize: "17px", fontWeight: 700, marginTop: "6px" }}>
-                        {desc}
-                      </div>
-                    </div>
-                  ))}
+      <section style={styles.mainGrid}>
+        <div style={styles.leftColumn}>
+          <div style={styles.panel}>
+            <div style={styles.panelHeader}>
+              <div>
+                <h2 style={styles.panelTitle}>3D 平面產線監控</h2>
+                <div style={styles.panelDesc}>
+                  可切換整廠總覽與指定產線監控
                 </div>
               </div>
             </div>
 
-            <div style={{ display: "grid", gap: "24px", height: "fit-content" }}>
-              <div style={cardStyle}>
-                <h2 style={sectionTitleStyle}>AI 工廠助理</h2>
-                <p style={{ color: "#cbd5e1", marginTop: 0, fontSize: "15px" }}>
-                  可直接輸入問題查詢，也可點選建議問題。這版為規則型半對話 AI。
-                </p>
-
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: isMobile ? "1fr" : "1fr auto",
-                    gap: "10px",
-                    marginTop: "18px",
-                  }}
+            <div style={styles.monitorToolbar}>
+              <div style={styles.modeGroup}>
+                <span style={styles.toolbarLabel}>監控模式</span>
+                <button
+                  style={
+                    viewMode === "factory"
+                      ? styles.activeModeButton
+                      : styles.modeButton
+                  }
+                  onClick={() => setViewMode("factory")}
                 >
-                  <input
-                    value={aiInput}
-                    onChange={(e) => setAiInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") handleAiSubmit(aiInput);
-                    }}
-                    placeholder="輸入問題，例如：NV-10 狀態、哪台稼動率最低、Line A 產量"
-                    style={{
-                      width: "100%",
-                      background: "#16253a",
-                      border: "1px solid #24354e",
-                      borderRadius: "12px",
-                      padding: "12px 14px",
-                      color: "white",
-                      outline: "none",
-                      fontSize: "14px",
-                    }}
-                  />
-
-                  <button
-                    onClick={() => handleAiSubmit(aiInput)}
-                    style={{
-                      background: "#2563eb",
-                      color: "white",
-                      border: "none",
-                      borderRadius: "12px",
-                      padding: "12px 16px",
-                      cursor: "pointer",
-                      fontWeight: 700,
-                      width: isMobile ? "100%" : "auto",
-                    }}
-                  >
-                    送出
-                  </button>
-                </div>
-
-                <div
-                  style={{
-                    background: "#16253a",
-                    borderRadius: "12px",
-                    padding: "14px",
-                    marginTop: "16px",
-                  }}
+                  整廠總覽
+                </button>
+                <button
+                  style={
+                    viewMode === "line"
+                      ? styles.activeModeButton
+                      : styles.modeButton
+                  }
+                  onClick={() => setViewMode("line")}
                 >
-                  <div style={{ color: "#93c5fd", fontSize: "13px", marginBottom: "8px" }}>使用者提問</div>
-                  <div style={{ color: "white", fontSize: "16px", fontWeight: "700", lineHeight: 1.6 }}>
-                    {currentQuestion}
-                  </div>
-                </div>
+                  依產線查看
+                </button>
+              </div>
 
-                <div
-                  style={{
-                    background: "#0b2942",
-                    border: "1px solid #2563eb",
-                    borderRadius: "12px",
-                    padding: "16px",
-                    marginTop: "16px",
-                  }}
-                >
-                  <div style={{ color: "#38bdf8", fontSize: "13px", marginBottom: "10px" }}>系統回答</div>
-                  <div style={{ color: "white", lineHeight: "1.9", fontSize: "15px", wordBreak: "break-word" }}>
-                    {currentAnswer}
-                  </div>
-                </div>
-
-                <div style={{ marginTop: "22px" }}>
-                  <div style={{ color: "#cbd5e1", fontSize: "14px", marginBottom: "10px" }}>建議問題</div>
-
-                  {suggestions.map((q) => (
+              {viewMode === "line" && (
+                <div style={styles.lineGroup}>
+                  <span style={styles.toolbarLabel}>選擇產線</span>
+                  {lines.map((line) => (
                     <button
-                      key={q}
-                      onClick={() => handleAiSubmit(q)}
-                      style={{
-                        width: "100%",
-                        background: currentQuestion === q ? "#0b2942" : "#16253a",
-                        borderRadius: "12px",
-                        padding: "12px 14px",
-                        marginBottom: "10px",
-                        color: "white",
-                        fontSize: "14px",
-                        border: currentQuestion === q ? "1px solid #2563eb" : "1px solid transparent",
-                        cursor: "pointer",
-                        textAlign: "left",
-                        lineHeight: 1.6,
-                      }}
+                      key={line}
+                      style={
+                        selectedLine === line
+                          ? styles.activeLineButton
+                          : styles.lineButton
+                      }
+                      onClick={() => setSelectedLine(line)}
                     >
-                      {q}
+                      {line}
                     </button>
                   ))}
                 </div>
-              </div>
+              )}
+            </div>
 
-              <div style={cardStyle}>
-                <h3 style={{ marginTop: 0, marginBottom: "10px", color: "white", fontSize: "22px", fontWeight: 700 }}>
-                  系統狀態
-                </h3>
-
-                <div style={{ display: "grid", gap: "12px", marginTop: "14px" }}>
-                  {[
-                    ["連線設備數", `${machines.length} 台`, "white"],
-                    ["在線設備", `${runningCount} 台`, "#22c55e"],
-                    ["待機設備", `${idleCount} 台`, "#f59e0b"],
-                    ["異常設備", `${abnormalCount} 台`, "#ef4444"],
-                  ].map(([label, value, color]) => (
-                    <div
-                      key={label}
-                      style={{
-                        background: "#16253a",
-                        borderRadius: "12px",
-                        padding: "14px",
-                        color: "white",
-                        display: "flex",
-                        justifyContent: "space-between",
-                        gap: "12px",
-                      }}
-                    >
-                      <span>{label}</span>
-                      <b style={{ color, whiteSpace: "nowrap" }}>{value}</b>
-                    </div>
-                  ))}
+            <div style={styles.lineSummaryCard}>
+              <div style={styles.lineSummaryTitle}>{displaySummaryTitle}</div>
+              <div style={styles.lineSummaryGrid}>
+                <div style={styles.summaryItem}>
+                  <div style={styles.summaryLabel}>運轉中</div>
+                  <div style={styles.summaryValue}>
+                    {displaySummary.running} 台
+                  </div>
+                </div>
+                <div style={styles.summaryItem}>
+                  <div style={styles.summaryLabel}>待機</div>
+                  <div style={styles.summaryValue}>
+                    {displaySummary.idle} 台
+                  </div>
+                </div>
+                <div style={styles.summaryItem}>
+                  <div style={styles.summaryLabel}>異常停止</div>
+                  <div style={styles.summaryValue}>
+                    {displaySummary.abnormal} 台
+                  </div>
+                </div>
+                <div style={styles.summaryItem}>
+                  <div style={styles.summaryLabel}>今日產量</div>
+                  <div style={styles.summaryValue}>
+                    {displaySummary.totalOutput} 件
+                  </div>
+                </div>
+                <div style={styles.summaryItem}>
+                  <div style={styles.summaryLabel}>平均稼動率</div>
+                  <div style={styles.summaryValue}>
+                    {displaySummary.avgUtilization}%
+                  </div>
                 </div>
               </div>
+            </div>
 
-              <div style={cardStyle}>
-                <h3 style={{ marginTop: 0, marginBottom: "10px", color: "white", fontSize: "22px", fontWeight: 700 }}>
-                  即時排行
-                </h3>
+            <div style={styles.searchRow}>
+              <input
+                style={styles.searchInput}
+                type="text"
+                value={searchKeyword}
+                onChange={(e) => setSearchKeyword(e.target.value)}
+                placeholder="搜尋機台 / 人員 / 產線 / 程式名稱"
+              />
+            </div>
 
-                <div style={{ color: "#cbd5e1", fontSize: "14px", marginBottom: "10px" }}>模擬資料每 3 秒重新計算</div>
+            <div style={styles.factoryMap}>
+              {viewMode === "factory" ? (
+                lines.map((line) => {
+                  const lineMachines = filteredMachines.filter(
+                    (machine) => machine.line === line
+                  );
 
-                {topOutputMachines.map((machine, index) => (
-                  <div
-                    key={machine.name}
-                    style={{
-                      background: "#16253a",
-                      borderRadius: "12px",
-                      padding: "12px 14px",
-                      marginTop: "12px",
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      gap: "12px",
-                      color: "white",
-                    }}
-                  >
-                    <span>{index + 1}. {machine.name}</span>
-                    <b style={{ color: "#22c55e", whiteSpace: "nowrap" }}>{machine.output} 件</b>
+                  if (lineMachines.length === 0) return null;
+
+                  return (
+                    <div key={line} style={styles.lineSection}>
+                      <div style={styles.lineSectionHeader}>
+                        <div style={styles.lineSectionTitle}>{line}</div>
+                        <div style={styles.lineSectionCount}>
+                          {lineMachines.length} 台設備
+                        </div>
+                      </div>
+
+                      <div style={styles.machineGrid}>
+                        {lineMachines.map((machine) => (
+                          <MachineCard
+                            key={machine.machineId}
+                            machine={machine}
+                            onClick={() => handleOpenMachine(machine)}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div style={styles.lineSection}>
+                  <div style={styles.lineSectionHeader}>
+                    <div style={styles.lineSectionTitle}>{selectedLine}</div>
+                    <div style={styles.lineSectionCount}>
+                      {filteredMachines.length} 台設備
+                    </div>
                   </div>
-                ))}
+
+                  <div style={styles.machineGrid}>
+                    {filteredMachines.map((machine) => (
+                      <MachineCard
+                        key={machine.machineId}
+                        machine={machine}
+                        onClick={() => handleOpenMachine(machine)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {filteredMachines.length === 0 && (
+                <div style={styles.emptyState}>查無符合條件的機台資料</div>
+              )}
+            </div>
+          </div>
+
+          <div style={styles.panel}>
+            <div style={styles.panelHeader}>
+              <div>
+                <h2 style={styles.panelTitle}>設備列表</h2>
+                <div style={styles.panelDesc}>
+                  點選設備可查看詳細狀態、生產資訊與警報
+                </div>
+              </div>
+            </div>
+
+            <div style={styles.tableWrapper}>
+              <table style={styles.table}>
+                <thead>
+                  <tr>
+                    <th style={styles.th}>機台</th>
+                    <th style={styles.th}>當責人員</th>
+                    <th style={styles.th}>產線</th>
+                    <th style={styles.th}>狀態</th>
+                    <th style={styles.th}>今日產量</th>
+                    <th style={styles.th}>稼動率</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredMachines.map((machine) => (
+                    <tr
+                      key={machine.machineId}
+                      style={styles.tr}
+                      onClick={() => handleOpenMachine(machine)}
+                    >
+                      <td style={styles.td}>{machine.machineId}</td>
+                      <td style={styles.td}>{machine.owner}</td>
+                      <td style={styles.td}>{machine.line}</td>
+                      <td style={styles.td}>
+                        <span
+                          style={{
+                            ...styles.statusBadge,
+                            background: `${statusColorMap[machine.status]}22`,
+                            color: statusColorMap[machine.status],
+                            borderColor: `${statusColorMap[machine.status]}66`,
+                          }}
+                        >
+                          {machine.status}
+                        </span>
+                      </td>
+                      <td style={styles.td}>{machine.output}</td>
+                      <td style={styles.td}>{machine.utilization}%</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div style={styles.rightColumn}>
+          <div style={styles.panel}>
+            <div style={styles.panelHeader}>
+              <div>
+                <h2 style={styles.panelTitle}>AI 工廠助理</h2>
+                <div style={styles.panelDesc}>
+                  支援產線摘要、機台狀態、產量與異常查詢
+                </div>
+              </div>
+            </div>
+
+            <div style={styles.suggestionWrap}>
+              {suggestionQuestions.map((question) => (
+                <button
+                  key={question}
+                  style={styles.suggestionButton}
+                  onClick={() => handleAIQuestion(question)}
+                >
+                  {question}
+                </button>
+              ))}
+            </div>
+
+            <div style={styles.chatBox}>
+              {chatHistory.map((item, index) => (
+                <div
+                  key={`${item.role}-${index}`}
+                  style={{
+                    ...styles.chatBubble,
+                    ...(item.role === "user"
+                      ? styles.userBubble
+                      : styles.assistantBubble),
+                  }}
+                >
+                  {item.text}
+                </div>
+              ))}
+            </div>
+
+            <div style={styles.chatInputRow}>
+              <input
+                style={styles.chatInput}
+                type="text"
+                value={aiInput}
+                onChange={(e) => setAiInput(e.target.value)}
+                placeholder="例如：NV-8 狀態？、哪台產量最高？"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") submitAI();
+                }}
+              />
+              <button
+                style={styles.sendButton}
+                onClick={() => submitAI()}
+              >
+                送出
+              </button>
+            </div>
+          </div>
+
+          <div style={styles.panel}>
+            <div style={styles.panelHeader}>
+              <div>
+                <h2 style={styles.panelTitle}>即時警報列表</h2>
+                <div style={styles.panelDesc}>顯示最新警報與提醒資訊</div>
+              </div>
+            </div>
+
+            <div style={styles.alertFeed}>
+              {alertList.length > 0 ? (
+                alertList.map((alert, index) => (
+                  <div
+                    key={`${alert.machineId}-${alert.code}-${index}`}
+                    style={styles.alertFeedItem}
+                  >
+                    <div style={styles.alertFeedTop}>
+                      <span style={styles.alertFeedMachine}>
+                        {alert.machineId}
+                      </span>
+                      <span style={styles.alertFeedTime}>{alert.time}</span>
+                    </div>
+                    <div style={styles.alertFeedMeta}>
+                      <span style={styles.alertFeedLine}>{alert.line}</span>
+                      <span style={styles.alertFeedCode}>{alert.code}</span>
+                    </div>
+                    <div style={styles.alertFeedMessage}>{alert.message}</div>
+                  </div>
+                ))
+              ) : (
+                <div style={styles.emptyState}>目前無警報資料</div>
+              )}
+            </div>
+          </div>
+
+          <div style={styles.panel}>
+            <div style={styles.panelHeader}>
+              <div>
+                <h2 style={styles.panelTitle}>導入路徑</h2>
+                <div style={styles.panelDesc}>
+                  展示型 Demo 可延伸至真實工廠資料串接
+                </div>
+              </div>
+            </div>
+
+            <div style={styles.roadmap}>
+              <div style={styles.roadmapItem}>
+                <div style={styles.roadmapStep}>A</div>
+                <div>
+                  <div style={styles.roadmapTitle}>展示版</div>
+                  <div style={styles.roadmapText}>
+                    建立品牌化智慧工廠畫面與可視化監控介面。
+                  </div>
+                </div>
+              </div>
+              <div style={styles.roadmapItem}>
+                <div style={styles.roadmapStep}>B</div>
+                <div>
+                  <div style={styles.roadmapTitle}>模擬互動版</div>
+                  <div style={styles.roadmapText}>
+                    加入模擬即時資料、AI 助理與單機詳細資訊。
+                  </div>
+                </div>
+              </div>
+              <div style={styles.roadmapItem}>
+                <div style={styles.roadmapStep}>C</div>
+                <div>
+                  <div style={styles.roadmapTitle}>實際串接版</div>
+                  <div style={styles.roadmapText}>
+                    未來可接 CNC / PLC / OPC UA / MES 等真實系統資料。
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
+      </section>
 
-      {isDetailOpen && selectedMachine && selectedMachineDetail && (
+      {selectedMachine && (
         <div
-          onClick={closeMachineDetail}
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(2, 6, 23, 0.76)",
-            display: "flex",
-            alignItems: isMobile ? "stretch" : "center",
-            justifyContent: "center",
-            zIndex: 9999,
-            padding: isMobile ? "0" : "24px",
-          }}
+          style={styles.modalOverlay}
+          onClick={() => setSelectedMachine(null)}
         >
           <div
+            style={styles.modalContent}
             onClick={(e) => e.stopPropagation()}
-            style={{
-              width: isMobile ? "100%" : "min(860px, 100%)",
-              height: isMobile ? "100vh" : "auto",
-              maxHeight: isMobile ? "100vh" : "90vh",
-              overflowY: "auto",
-              background: "linear-gradient(180deg, #0f1b2d 0%, #0b1628 100%)",
-              borderRadius: isMobile ? "0" : "22px",
-              border: `1px solid ${getStatusColor(selectedMachine.status)}`,
-              boxShadow: "0 20px 60px rgba(0,0,0,0.45)",
-            }}
           >
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                padding: isMobile ? "16px" : "20px 24px",
-                borderBottom: "1px solid #1f2f46",
-                position: "sticky",
-                top: 0,
-                background: "linear-gradient(180deg, #0f1b2d 0%, #0b1628 100%)",
-                zIndex: 2,
-              }}
-            >
+            <div style={styles.modalHeader}>
               <div>
-                <div style={{ color: "white", fontSize: isMobile ? "24px" : "30px", fontWeight: 700 }}>
-                  {selectedMachine.name}
-                </div>
-                <div style={{ color: "#93c5fd", fontSize: "14px", marginTop: "6px" }}>
-                  {selectedMachine.line}
+                <h2 style={styles.modalTitle}>{selectedMachine.machineId}</h2>
+                <div style={styles.modalSubtitle}>
+                  {selectedMachine.line} ｜ {selectedMachine.status} ｜ 當責人員{" "}
+                  {selectedMachine.owner}
                 </div>
               </div>
-
               <button
-                onClick={closeMachineDetail}
-                style={{
-                  width: "40px",
-                  height: "40px",
-                  borderRadius: "999px",
-                  border: "1px solid #334155",
-                  background: "#0b1220",
-                  color: "white",
-                  fontSize: "20px",
-                  cursor: "pointer",
-                  flexShrink: 0,
-                }}
+                style={styles.closeButton}
+                onClick={() => setSelectedMachine(null)}
               >
                 ×
               </button>
             </div>
 
-            <div style={{ padding: isMobile ? "16px" : "24px" }}>
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: isMobile ? "1fr 1fr" : "1fr auto auto auto",
-                  gap: "12px",
-                  alignItems: "center",
-                  marginBottom: "18px",
+            <div style={styles.modalActionRow}>
+              <input
+                style={styles.modalSearchInput}
+                type="text"
+                placeholder="輸入機台型號，例如 NV-8"
+                onKeyDown={(e) => {
+                  if (e.key !== "Enter") return;
+                  const keyword = e.currentTarget.value.trim().toLowerCase();
+                  const found = machines.find(
+                    (machine) =>
+                      machine.machineId.toLowerCase() === keyword
+                  );
+                  if (found) setSelectedMachine(found);
                 }}
-              >
-                <input
-                  value={searchInput}
-                  onChange={(e) => setSearchInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") handleSearch();
-                  }}
-                  placeholder="輸入機台號碼"
-                  style={{
-                    gridColumn: isMobile ? "1 / -1" : "auto",
-                    width: "100%",
-                    background: "#0b1220",
-                    border: "1px solid #24354e",
-                    borderRadius: "12px",
-                    padding: "12px 14px",
-                    color: "white",
-                    outline: "none",
-                    fontSize: "14px",
-                  }}
-                />
-
-                <button
-                  onClick={handleSearch}
-                  style={{
-                    background: "#2563eb",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "12px",
-                    padding: "12px 16px",
-                    cursor: "pointer",
-                    fontWeight: 700,
-                  }}
-                >
-                  搜尋
-                </button>
-
-                <button
-                  onClick={goPrevMachine}
-                  disabled={!prevMachine}
-                  style={{
-                    background: prevMachine ? "#16253a" : "#0b1220",
-                    color: prevMachine ? "white" : "#64748b",
-                    border: "1px solid #24354e",
-                    borderRadius: "12px",
-                    padding: "12px 16px",
-                    cursor: prevMachine ? "pointer" : "not-allowed",
-                    fontWeight: 700,
-                  }}
-                >
+              />
+              <div style={styles.modalNavButtons}>
+                <button style={styles.modalNavButton} onClick={handlePrevMachine}>
                   上一台
                 </button>
-
-                <button
-                  onClick={goNextMachine}
-                  disabled={!nextMachine}
-                  style={{
-                    background: nextMachine ? "#16253a" : "#0b1220",
-                    color: nextMachine ? "white" : "#64748b",
-                    border: "1px solid #24354e",
-                    borderRadius: "12px",
-                    padding: "12px 16px",
-                    cursor: nextMachine ? "pointer" : "not-allowed",
-                    fontWeight: 700,
-                  }}
-                >
+                <button style={styles.modalNavButton} onClick={handleNextMachine}>
                   下一台
                 </button>
               </div>
+            </div>
 
-              <div
-                style={{
-                  display: "inline-flex",
-                  background: getStatusColor(selectedMachine.status),
-                  color: "white",
-                  borderRadius: "999px",
-                  padding: "7px 14px",
-                  fontSize: "13px",
-                  fontWeight: 700,
-                  marginBottom: "18px",
-                }}
-              >
-                {selectedMachine.status}
-              </div>
-
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr 1fr",
-                  gap: "14px",
-                  marginBottom: "18px",
-                }}
-              >
-                <div style={{ background: "#0b1220", borderRadius: "14px", padding: "14px", border: "1px solid #24354e" }}>
-                  <div style={{ color: "#cbd5e1", fontSize: "12px" }}>今日產量</div>
-                  <div style={{ color: "white", fontSize: "24px", fontWeight: 700, marginTop: "8px" }}>
+            <div style={styles.detailSection}>
+              <div style={styles.detailSectionTitle}>設備狀態</div>
+              <div style={styles.detailGrid}>
+                <div style={styles.detailItem}>
+                  <div style={styles.detailLabel}>機台</div>
+                  <div style={styles.detailValue}>
+                    {selectedMachine.machineId}
+                  </div>
+                </div>
+                <div style={styles.detailItem}>
+                  <div style={styles.detailLabel}>產線</div>
+                  <div style={styles.detailValue}>
+                    {selectedMachine.line}
+                  </div>
+                </div>
+                <div style={styles.detailItem}>
+                  <div style={styles.detailLabel}>狀態</div>
+                  <div
+                    style={{
+                      ...styles.detailValue,
+                      color: statusColorMap[selectedMachine.status],
+                      fontWeight: 700,
+                    }}
+                  >
+                    {selectedMachine.status}
+                  </div>
+                </div>
+                <div style={styles.detailItem}>
+                  <div style={styles.detailLabel}>今日產量</div>
+                  <div style={styles.detailValue}>
                     {selectedMachine.output} 件
                   </div>
                 </div>
-
-                <div style={{ background: "#0b1220", borderRadius: "14px", padding: "14px", border: "1px solid #24354e" }}>
-                  <div style={{ color: "#cbd5e1", fontSize: "12px" }}>稼動率</div>
-                  <div style={{ color: "white", fontSize: "24px", fontWeight: 700, marginTop: "8px" }}>
-                    {selectedMachine.util}%
+                <div style={styles.detailItem}>
+                  <div style={styles.detailLabel}>稼動率</div>
+                  <div style={styles.detailValue}>
+                    {selectedMachine.utilization}%
                   </div>
                 </div>
-
-                <div style={{ background: "#0b1220", borderRadius: "14px", padding: "14px", border: "1px solid #24354e" }}>
-                  <div style={{ color: "#cbd5e1", fontSize: "12px" }}>估計停機時間</div>
-                  <div style={{ color: "white", fontSize: "24px", fontWeight: 700, marginTop: "8px" }}>
-                    {selectedMachineDetail.estimatedDowntime}
+                <div style={styles.detailItem}>
+                  <div style={styles.detailLabel}>完工時間</div>
+                  <div style={styles.detailValue}>
+                    {selectedMachine.completionTime}
+                  </div>
+                </div>
+                <div style={styles.detailItemFull}>
+                  <div style={styles.detailLabel}>狀態說明</div>
+                  <div style={styles.detailValue}>
+                    {selectedMachine.reason}
                   </div>
                 </div>
               </div>
+            </div>
 
-              <div style={{ background: "#16253a", borderRadius: "14px", padding: "16px", marginBottom: "14px" }}>
-                <div style={{ color: "#cbd5e1", fontSize: "13px", marginBottom: "8px" }}>模擬停機 / 狀態原因</div>
-                <div style={{ color: "white", lineHeight: 1.8 }}>{selectedMachineDetail.reason}</div>
+            <div style={styles.detailSection}>
+              <div style={styles.detailSectionTitle}>目前生產資訊</div>
+              <div style={styles.detailGrid}>
+                <div style={styles.detailItem}>
+                  <div style={styles.detailLabel}>當責人員</div>
+                  <div style={styles.detailValue}>
+                    {selectedMachine.owner}
+                  </div>
+                </div>
+                <div style={styles.detailItem}>
+                  <div style={styles.detailLabel}>程式名稱</div>
+                  <div style={styles.detailValue}>
+                    {selectedMachine.programName}
+                  </div>
+                </div>
+                <div style={styles.detailItem}>
+                  <div style={styles.detailLabel}>機台暱稱</div>
+                  <div style={styles.detailValue}>
+                    {selectedMachine.machineName}
+                  </div>
+                </div>
+                <div style={styles.detailItem}>
+                  <div style={styles.detailLabel}>目前生產工件</div>
+                  <div style={styles.detailValue}>
+                    {selectedMachine.currentPart}
+                  </div>
+                </div>
+                <div style={styles.detailItem}>
+                  <div style={styles.detailLabel}>生產起始時間</div>
+                  <div style={styles.detailValue}>
+                    {selectedMachine.productionStartTime}
+                  </div>
+                </div>
+                <div style={styles.detailItem}>
+                  <div style={styles.detailLabel}>生產數量</div>
+                  <div style={styles.detailValue}>
+                    {selectedMachine.productionQty} 件
+                  </div>
+                </div>
               </div>
+            </div>
 
-              <div style={{ background: "#16253a", borderRadius: "14px", padding: "16px", marginBottom: "14px" }}>
-                <div style={{ color: "#cbd5e1", fontSize: "13px", marginBottom: "8px" }}>建議動作</div>
-                <div style={{ color: "white", lineHeight: 1.8 }}>{selectedMachineDetail.action}</div>
-              </div>
-
-              <div style={{ background: "#16253a", borderRadius: "14px", padding: "16px" }}>
-                <div style={{ color: "#cbd5e1", fontSize: "13px", marginBottom: "10px" }}>最近警報明細</div>
-
-                {selectedMachineDetail.alarmHistory.map((item, index) => (
-                  <div
-                    key={index}
-                    style={{
-                      background: "#0b1220",
-                      borderRadius: "12px",
-                      padding: "12px 14px",
-                      marginBottom: "10px",
-                      display: "grid",
-                      gridTemplateColumns: isMobile ? "1fr" : "80px 110px 1fr 90px",
-                      gap: "10px",
-                      alignItems: "center",
-                    }}
-                  >
-                    <div style={{ color: "#fca5a5", fontWeight: 700 }}>{item.time}</div>
-                    <div style={{ color: "#93c5fd", fontWeight: 700 }}>{item.code}</div>
-                    <div style={{ color: "#e5e7eb" }}>{item.reason}</div>
-                    <div
-                      style={{
-                        color: getAlarmStatusColor(item.status),
-                        fontWeight: 700,
-                        textAlign: isMobile ? "left" : "right",
-                      }}
-                    >
-                      {item.status}
+            <div style={styles.detailSection}>
+              <div style={styles.detailSectionTitle}>最近警報明細</div>
+              <div style={styles.alertList}>
+                {selectedMachine.alerts.length > 0 ? (
+                  selectedMachine.alerts.map((alert, index) => (
+                    <div key={`${alert.code}-${index}`} style={styles.alertItem}>
+                      <div style={styles.alertTime}>{alert.time}</div>
+                      <div style={styles.alertCode}>{alert.code}</div>
+                      <div style={styles.alertMessage}>{alert.message}</div>
                     </div>
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  <div style={styles.noAlertText}>目前無警報紀錄</div>
+                )}
               </div>
             </div>
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 }
+
+function MachineCard({ machine, onClick }) {
+  return (
+    <button style={styles.machineCard} onClick={onClick}>
+      <div style={styles.machineCardTop}>
+        <div style={styles.machineName}>{machine.machineId}</div>
+        <div
+          style={{
+            ...styles.statusDot,
+            backgroundColor: statusColorMap[machine.status],
+            boxShadow: `0 0 12px ${statusColorMap[machine.status]}`,
+          }}
+        />
+      </div>
+
+      <div style={styles.machineMeta}>
+        當責人員：{machine.owner}
+      </div>
+
+      <div style={styles.machineInfoRow}>
+        <span style={styles.machineInfoLabel}>狀態</span>
+        <span
+          style={{
+            ...styles.machineInfoValue,
+            color: statusColorMap[machine.status],
+          }}
+        >
+          {machine.status}
+        </span>
+      </div>
+
+      <div style={styles.machineInfoRow}>
+        <span style={styles.machineInfoLabel}>今日產量</span>
+        <span style={styles.machineInfoValue}>{machine.output} 件</span>
+      </div>
+
+      <div style={styles.machineInfoRow}>
+        <span style={styles.machineInfoLabel}>稼動率</span>
+        <span style={styles.machineInfoValue}>{machine.utilization}%</span>
+      </div>
+
+      <div style={styles.machineInfoRow}>
+        <span style={styles.machineInfoLabel}>程式名稱</span>
+        <span style={styles.machineInfoValue}>{machine.programName}</span>
+      </div>
+    </button>
+  );
+}
+
+function generateAIResponse(question, machines, lines) {
+  const text = question.trim().toLowerCase();
+
+  const abnormalMachines = machines.filter(
+    (machine) => machine.status === "異常停止"
+  );
+  const lowestUtilizationMachine = [...machines].sort(
+    (a, b) => a.utilization - b.utilization
+  )[0];
+  const highestOutputMachine = [...machines].sort(
+    (a, b) => b.output - a.output
+  )[0];
+
+  if (text.includes("稼動率最低")) {
+    return `目前稼動率最低的是 ${lowestUtilizationMachine.machineId}，稼動率 ${lowestUtilizationMachine.utilization}%，目前狀態為 ${lowestUtilizationMachine.status}。`;
+  }
+
+  if (text.includes("產量最高")) {
+    return `目前產量最高的是 ${highestOutputMachine.machineId}，今日產量 ${highestOutputMachine.output} 件，位於 ${highestOutputMachine.line}。`;
+  }
+
+  if (text.includes("異常") || text.includes("停機")) {
+    if (abnormalMachines.length === 0) {
+      return "目前沒有異常停止設備。";
+    }
+    return `目前異常停止設備共有 ${abnormalMachines.length} 台：${abnormalMachines
+      .map((m) => `${m.machineId}（${m.reason}）`)
+      .join("、")}。`;
+  }
+
+  for (const line of lines) {
+    if (text.includes(line.toLowerCase())) {
+      const lineMachines = machines.filter((machine) => machine.line === line);
+      const totalOutput = lineMachines.reduce(
+        (sum, machine) => sum + machine.output,
+        0
+      );
+      const avgUtilization = Math.round(
+        lineMachines.reduce((sum, machine) => sum + machine.utilization, 0) /
+          lineMachines.length
+      );
+      const abnormalCount = lineMachines.filter(
+        (machine) => machine.status === "異常停止"
+      ).length;
+
+      return `${line} 目前共有 ${lineMachines.length} 台設備，今日總產量 ${totalOutput} 件，平均稼動率 ${avgUtilization}%，異常停止台數 ${abnormalCount} 台。`;
+    }
+  }
+
+  const machineFound = machines.find(
+    (machine) =>
+      text.includes(machine.machineId.toLowerCase()) ||
+      text.includes(machine.owner.toLowerCase())
+  );
+
+  if (machineFound) {
+    if (text.includes("狀態")) {
+      return `${machineFound.machineId} 目前狀態為 ${machineFound.status}，原因為：${machineFound.reason}。`;
+    }
+    if (text.includes("產量")) {
+      return `${machineFound.machineId} 今日產量為 ${machineFound.output} 件，目標生產數量為 ${machineFound.productionQty} 件。`;
+    }
+    if (text.includes("稼動率")) {
+      return `${machineFound.machineId} 目前稼動率為 ${machineFound.utilization}%。`;
+    }
+    if (text.includes("警報")) {
+      if (!machineFound.alerts.length) {
+        return `${machineFound.machineId} 目前沒有警報紀錄。`;
+      }
+      const latestAlert = machineFound.alerts[0];
+      return `${machineFound.machineId} 最新警報為 ${latestAlert.time} 的 ${latestAlert.code}，內容是「${latestAlert.message}」。`;
+    }
+
+    return `${machineFound.machineId} 位於 ${machineFound.line}，目前狀態 ${machineFound.status}，今日產量 ${machineFound.output} 件，稼動率 ${machineFound.utilization}%。`;
+  }
+
+  return "我可以協助查詢整廠、單一產線、指定機台的狀態、產量、稼動率與警報資訊。";
+}
+
+function formatTime(date) {
+  return date.toLocaleTimeString("zh-TW", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}
+
+function formatDateTime(date) {
+  return date.toLocaleString("zh-TW", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  });
+}
+
+const styles = {
+  app: {
+    minHeight: "100vh",
+    background:
+      "radial-gradient(circle at top left, rgba(37,99,235,0.18), transparent 28%), radial-gradient(circle at top right, rgba(14,165,233,0.15), transparent 28%), linear-gradient(180deg, #020617 0%, #0f172a 100%)",
+    color: "#ffffff",
+    padding: "24px",
+    fontFamily:
+      '-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC", "Microsoft JhengHei", sans-serif',
+    position: "relative",
+    overflow: "hidden",
+  },
+  backgroundGlowOne: {
+    position: "absolute",
+    width: "420px",
+    height: "420px",
+    borderRadius: "999px",
+    background: "rgba(37, 99, 235, 0.12)",
+    filter: "blur(80px)",
+    top: "-120px",
+    left: "-100px",
+    pointerEvents: "none",
+  },
+  backgroundGlowTwo: {
+    position: "absolute",
+    width: "420px",
+    height: "420px",
+    borderRadius: "999px",
+    background: "rgba(14, 165, 233, 0.1)",
+    filter: "blur(80px)",
+    bottom: "-160px",
+    right: "-100px",
+    pointerEvents: "none",
+  },
+  header: {
+    position: "relative",
+    zIndex: 1,
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: "16px",
+    marginBottom: "24px",
+    flexWrap: "wrap",
+  },
+  brandRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: "14px",
+  },
+  logoBadge: {
+    width: "52px",
+    height: "52px",
+    borderRadius: "16px",
+    background: "linear-gradient(135deg, #2563eb, #0ea5e9)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: "26px",
+    fontWeight: 800,
+    color: "#ffffff",
+    boxShadow: "0 12px 32px rgba(37, 99, 235, 0.35)",
+  },
+  title: {
+    margin: 0,
+    fontSize: "clamp(28px, 4vw, 40px)",
+    fontWeight: 800,
+    letterSpacing: "0.4px",
+    color: "#ffffff",
+  },
+  subtitle: {
+    color: "#ffffff",
+    marginTop: "6px",
+    fontSize: "14px",
+  },
+  timeCard: {
+    background: "rgba(15, 23, 42, 0.75)",
+    border: "1px solid rgba(148, 163, 184, 0.18)",
+    borderRadius: "18px",
+    padding: "14px 18px",
+    minWidth: "260px",
+    backdropFilter: "blur(10px)",
+  },
+  timeLabel: {
+    color: "#ffffff",
+    fontSize: "13px",
+    marginBottom: "4px",
+  },
+  timeValue: {
+    fontSize: "18px",
+    fontWeight: 700,
+    color: "#ffffff",
+  },
+  kpiGrid: {
+    position: "relative",
+    zIndex: 1,
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+    gap: "14px",
+    marginBottom: "24px",
+  },
+  kpiCard: {
+    background: "rgba(15, 23, 42, 0.82)",
+    border: "1px solid rgba(148, 163, 184, 0.16)",
+    borderRadius: "18px",
+    padding: "18px",
+    backdropFilter: "blur(10px)",
+    boxShadow: "0 10px 30px rgba(2, 6, 23, 0.25)",
+  },
+  kpiLabel: {
+    color: "#ffffff",
+    fontSize: "13px",
+    marginBottom: "10px",
+  },
+  kpiValue: {
+    fontSize: "30px",
+    fontWeight: 800,
+    lineHeight: 1,
+    color: "#ffffff",
+  },
+  mainGrid: {
+    position: "relative",
+    zIndex: 1,
+    display: "grid",
+    gridTemplateColumns: "minmax(0, 1.55fr) minmax(320px, 0.95fr)",
+    gap: "20px",
+  },
+  leftColumn: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "20px",
+    minWidth: 0,
+  },
+  rightColumn: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "20px",
+    minWidth: 0,
+  },
+  panel: {
+    background: "rgba(15, 23, 42, 0.82)",
+    border: "1px solid rgba(148, 163, 184, 0.16)",
+    borderRadius: "22px",
+    padding: "20px",
+    backdropFilter: "blur(10px)",
+    boxShadow: "0 10px 30px rgba(2, 6, 23, 0.25)",
+    minWidth: 0,
+  },
+  panelHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: "12px",
+    marginBottom: "16px",
+    flexWrap: "wrap",
+  },
+  panelTitle: {
+    margin: 0,
+    fontSize: "22px",
+    fontWeight: 800,
+    color: "#ffffff",
+  },
+  panelDesc: {
+    color: "#ffffff",
+    fontSize: "14px",
+    marginTop: "6px",
+  },
+  monitorToolbar: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: "12px",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: "16px",
+  },
+  modeGroup: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: "10px",
+    alignItems: "center",
+  },
+  lineGroup: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: "10px",
+    alignItems: "center",
+  },
+  toolbarLabel: {
+    color: "#ffffff",
+    fontSize: "14px",
+    marginRight: "4px",
+  },
+  modeButton: {
+    background: "#1e293b",
+    color: "#ffffff",
+    border: "1px solid #334155",
+    borderRadius: "10px",
+    padding: "8px 14px",
+    cursor: "pointer",
+    fontSize: "14px",
+  },
+  activeModeButton: {
+    background: "#2563eb",
+    color: "#ffffff",
+    border: "1px solid #2563eb",
+    borderRadius: "10px",
+    padding: "8px 14px",
+    cursor: "pointer",
+    fontSize: "14px",
+    fontWeight: 700,
+  },
+  lineButton: {
+    background: "#0f172a",
+    color: "#ffffff",
+    border: "1px solid #334155",
+    borderRadius: "10px",
+    padding: "8px 14px",
+    cursor: "pointer",
+    fontSize: "14px",
+  },
+  activeLineButton: {
+    background: "#0ea5e9",
+    color: "#ffffff",
+    border: "1px solid #0ea5e9",
+    borderRadius: "10px",
+    padding: "8px 14px",
+    cursor: "pointer",
+    fontSize: "14px",
+    fontWeight: 700,
+  },
+  lineSummaryCard: {
+    background: "rgba(2, 6, 23, 0.65)",
+    border: "1px solid #334155",
+    borderRadius: "16px",
+    padding: "16px",
+    marginBottom: "16px",
+  },
+  lineSummaryTitle: {
+    color: "#ffffff",
+    fontSize: "18px",
+    fontWeight: 700,
+    marginBottom: "12px",
+    textAlign: "center",
+  },
+  lineSummaryGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
+    gap: "12px",
+  },
+  summaryItem: {
+    background: "#111827",
+    borderRadius: "12px",
+    padding: "12px",
+    border: "1px solid rgba(148,163,184,0.12)",
+  },
+  summaryLabel: {
+    color: "#ffffff",
+    fontSize: "13px",
+    marginBottom: "6px",
+  },
+  summaryValue: {
+    color: "#ffffff",
+    fontSize: "18px",
+    fontWeight: 700,
+  },
+  searchRow: {
+    marginBottom: "16px",
+  },
+  searchInput: {
+    width: "100%",
+    boxSizing: "border-box",
+    padding: "12px 14px",
+    borderRadius: "12px",
+    border: "1px solid #334155",
+    background: "#0b1220",
+    color: "#ffffff",
+    outline: "none",
+    fontSize: "14px",
+  },
+  factoryMap: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "16px",
+  },
+  lineSection: {
+    background: "rgba(2, 6, 23, 0.42)",
+    border: "1px solid rgba(148,163,184,0.14)",
+    borderRadius: "18px",
+    padding: "16px",
+  },
+  lineSectionHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: "12px",
+    alignItems: "center",
+    marginBottom: "14px",
+    flexWrap: "wrap",
+  },
+  lineSectionTitle: {
+    fontSize: "18px",
+    fontWeight: 700,
+    color: "#ffffff",
+  },
+  lineSectionCount: {
+    color: "#ffffff",
+    fontSize: "14px",
+  },
+  machineGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))",
+    gap: "12px",
+  },
+  machineCard: {
+    border: "1px solid rgba(148,163,184,0.14)",
+    background: "linear-gradient(180deg, #0b1220 0%, #111827 100%)",
+    borderRadius: "16px",
+    padding: "14px",
+    textAlign: "left",
+    color: "#ffffff",
+    cursor: "pointer",
+    transition: "transform 0.18s ease, border-color 0.18s ease",
+  },
+  machineCardTop: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: "10px",
+    alignItems: "center",
+    marginBottom: "6px",
+  },
+  machineName: {
+    fontSize: "18px",
+    fontWeight: 700,
+    color: "#ffffff",
+  },
+  statusDot: {
+    width: "12px",
+    height: "12px",
+    borderRadius: "999px",
+    flexShrink: 0,
+  },
+  machineMeta: {
+    color: "#ffffff",
+    fontSize: "13px",
+    marginBottom: "12px",
+  },
+  machineInfoRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: "10px",
+    marginBottom: "8px",
+  },
+  machineInfoLabel: {
+    color: "#ffffff",
+    fontSize: "13px",
+  },
+  machineInfoValue: {
+    color: "#ffffff",
+    fontSize: "13px",
+    fontWeight: 600,
+    textAlign: "right",
+  },
+  tableWrapper: {
+    overflowX: "auto",
+  },
+  table: {
+    width: "100%",
+    borderCollapse: "collapse",
+    minWidth: "640px",
+  },
+  th: {
+    textAlign: "left",
+    padding: "12px",
+    color: "#ffffff",
+    fontSize: "13px",
+    fontWeight: 600,
+    borderBottom: "1px solid rgba(148,163,184,0.14)",
+  },
+  tr: {
+    cursor: "pointer",
+  },
+  td: {
+    padding: "14px 12px",
+    borderBottom: "1px solid rgba(148,163,184,0.08)",
+    fontSize: "14px",
+    color: "#ffffff",
+  },
+  statusBadge: {
+    display: "inline-flex",
+    alignItems: "center",
+    padding: "4px 10px",
+    borderRadius: "999px",
+    border: "1px solid transparent",
+    fontSize: "13px",
+    fontWeight: 700,
+  },
+  suggestionWrap: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: "10px",
+    marginBottom: "14px",
+  },
+  suggestionButton: {
+    background: "#0b1220",
+    border: "1px solid #334155",
+    color: "#ffffff",
+    borderRadius: "999px",
+    padding: "9px 12px",
+    fontSize: "13px",
+    cursor: "pointer",
+  },
+  chatBox: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "10px",
+    background: "rgba(2, 6, 23, 0.42)",
+    border: "1px solid rgba(148,163,184,0.12)",
+    borderRadius: "16px",
+    padding: "14px",
+    minHeight: "260px",
+    maxHeight: "360px",
+    overflowY: "auto",
+    marginBottom: "12px",
+  },
+  chatBubble: {
+    maxWidth: "88%",
+    padding: "12px 14px",
+    borderRadius: "14px",
+    lineHeight: 1.6,
+    fontSize: "14px",
+    whiteSpace: "pre-wrap",
+    color: "#ffffff",
+  },
+  userBubble: {
+    alignSelf: "flex-end",
+    background: "#1d4ed8",
+  },
+  assistantBubble: {
+    alignSelf: "flex-start",
+    background: "#111827",
+    border: "1px solid rgba(148,163,184,0.12)",
+  },
+  chatInputRow: {
+    display: "flex",
+    gap: "10px",
+  },
+  chatInput: {
+    flex: 1,
+    minWidth: 0,
+    padding: "12px 14px",
+    borderRadius: "12px",
+    border: "1px solid #334155",
+    background: "#0b1220",
+    color: "#ffffff",
+    outline: "none",
+    fontSize: "14px",
+  },
+  sendButton: {
+    background: "linear-gradient(135deg, #2563eb, #0ea5e9)",
+    color: "#ffffff",
+    border: "none",
+    borderRadius: "12px",
+    padding: "0 18px",
+    cursor: "pointer",
+    fontWeight: 700,
+    whiteSpace: "nowrap",
+  },
+  alertFeed: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "10px",
+  },
+  alertFeedItem: {
+    background: "#111827",
+    border: "1px solid rgba(148,163,184,0.12)",
+    borderRadius: "14px",
+    padding: "12px",
+  },
+  alertFeedTop: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: "10px",
+    marginBottom: "6px",
+  },
+  alertFeedMachine: {
+    fontWeight: 700,
+    fontSize: "14px",
+    color: "#ffffff",
+  },
+  alertFeedTime: {
+    color: "#ffffff",
+    fontSize: "13px",
+  },
+  alertFeedMeta: {
+    display: "flex",
+    gap: "8px",
+    flexWrap: "wrap",
+    marginBottom: "6px",
+  },
+  alertFeedLine: {
+    color: "#ffffff",
+    fontSize: "13px",
+  },
+  alertFeedCode: {
+    color: "#f59e0b",
+    fontSize: "13px",
+    fontWeight: 700,
+  },
+  alertFeedMessage: {
+    color: "#ffffff",
+    fontSize: "14px",
+    lineHeight: 1.5,
+  },
+  roadmap: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "14px",
+  },
+  roadmapItem: {
+    display: "flex",
+    gap: "14px",
+    alignItems: "flex-start",
+    padding: "12px 0",
+    borderBottom: "1px solid rgba(148,163,184,0.08)",
+  },
+  roadmapStep: {
+    width: "34px",
+    height: "34px",
+    borderRadius: "999px",
+    background: "linear-gradient(135deg, #2563eb, #0ea5e9)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontWeight: 800,
+    color: "#ffffff",
+    flexShrink: 0,
+  },
+  roadmapTitle: {
+    fontWeight: 700,
+    marginBottom: "4px",
+    color: "#ffffff",
+  },
+  roadmapText: {
+    color: "#ffffff",
+    fontSize: "14px",
+    lineHeight: 1.5,
+  },
+  emptyState: {
+    color: "#ffffff",
+    textAlign: "center",
+    padding: "24px 12px",
+  },
+  modalOverlay: {
+    position: "fixed",
+    inset: 0,
+    background: "rgba(2, 6, 23, 0.76)",
+    backdropFilter: "blur(4px)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: "20px",
+    zIndex: 999,
+  },
+  modalContent: {
+    width: "min(960px, 100%)",
+    maxHeight: "90vh",
+    overflowY: "auto",
+    background: "linear-gradient(180deg, #0f172a 0%, #020617 100%)",
+    border: "1px solid rgba(148,163,184,0.18)",
+    borderRadius: "24px",
+    padding: "22px",
+    boxShadow: "0 30px 80px rgba(0,0,0,0.35)",
+  },
+  modalHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: "12px",
+    alignItems: "flex-start",
+    marginBottom: "16px",
+  },
+  modalTitle: {
+    margin: 0,
+    fontSize: "28px",
+    fontWeight: 800,
+    color: "#ffffff",
+  },
+  modalSubtitle: {
+    color: "#ffffff",
+    marginTop: "6px",
+    fontSize: "14px",
+  },
+  closeButton: {
+    width: "40px",
+    height: "40px",
+    borderRadius: "999px",
+    border: "1px solid #334155",
+    background: "#0b1220",
+    color: "#ffffff",
+    fontSize: "24px",
+    cursor: "pointer",
+    lineHeight: 1,
+  },
+  modalActionRow: {
+    display: "flex",
+    gap: "12px",
+    flexWrap: "wrap",
+    marginBottom: "22px",
+  },
+  modalSearchInput: {
+    flex: 1,
+    minWidth: "220px",
+    padding: "12px 14px",
+    borderRadius: "12px",
+    border: "1px solid #334155",
+    background: "#0b1220",
+    color: "#ffffff",
+    outline: "none",
+    fontSize: "14px",
+  },
+  modalNavButtons: {
+    display: "flex",
+    gap: "10px",
+  },
+  modalNavButton: {
+    border: "1px solid #334155",
+    background: "#111827",
+    color: "#ffffff",
+    borderRadius: "12px",
+    padding: "0 14px",
+    cursor: "pointer",
+    fontSize: "14px",
+    minHeight: "44px",
+  },
+  detailSection: {
+    marginBottom: "24px",
+  },
+  detailSectionTitle: {
+    color: "#ffffff",
+    fontSize: "18px",
+    fontWeight: 700,
+    marginBottom: "12px",
+  },
+  detailGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+    gap: "12px",
+  },
+  detailItem: {
+    background: "#111827",
+    borderRadius: "12px",
+    padding: "12px",
+    border: "1px solid rgba(148,163,184,0.1)",
+  },
+  detailItemFull: {
+    background: "#111827",
+    borderRadius: "12px",
+    padding: "12px",
+    gridColumn: "1 / -1",
+    border: "1px solid rgba(148,163,184,0.1)",
+  },
+  detailLabel: {
+    color: "#ffffff",
+    fontSize: "13px",
+    marginBottom: "6px",
+  },
+  detailValue: {
+    color: "#ffffff",
+    fontSize: "15px",
+    lineHeight: 1.5,
+    wordBreak: "break-word",
+  },
+  alertList: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "10px",
+  },
+  alertItem: {
+    display: "grid",
+    gridTemplateColumns: "80px 100px 1fr",
+    gap: "10px",
+    background: "#111827",
+    borderRadius: "12px",
+    padding: "12px",
+    alignItems: "center",
+    border: "1px solid rgba(148,163,184,0.1)",
+  },
+  alertTime: {
+    color: "#ffffff",
+    fontSize: "14px",
+  },
+  alertCode: {
+    color: "#f59e0b",
+    fontSize: "14px",
+    fontWeight: 700,
+  },
+  alertMessage: {
+    color: "#ffffff",
+    fontSize: "14px",
+    lineHeight: 1.5,
+  },
+  noAlertText: {
+    color: "#ffffff",
+    fontSize: "14px",
+  },
+};
+
+export default App;
