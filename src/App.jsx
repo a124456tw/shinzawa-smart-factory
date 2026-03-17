@@ -33,6 +33,19 @@ export default function App() {
     ],
   };
 
+  const suggestions = [
+    "目前稼動率最低的是哪一台？",
+    "今天哪台機台產量最高？",
+    "有哪些設備發生異常停機？",
+    "Line A 與 Line B 產量差多少？",
+  ];
+
+  const alarms = [
+    { time: "11:25", machine: "SV-76S", code: "AL-021", msg: "主軸異常警報" },
+    { time: "10:40", machine: "NV-10", code: "AL-014", msg: "刀庫定位異常" },
+    { time: "09:15", machine: "SV-110S", code: "MT-002", msg: "待料停機" },
+  ];
+
   const [machines, setMachines] = useState(initialMachines);
   const [now, setNow] = useState(new Date());
   const [selectedMachineName, setSelectedMachineName] = useState(null);
@@ -41,25 +54,18 @@ export default function App() {
   const [aiInput, setAiInput] = useState("");
   const [currentQuestion, setCurrentQuestion] = useState("目前稼動率最低的是哪一台？");
   const [currentAnswer, setCurrentAnswer] = useState("");
+  const [windowWidth, setWindowWidth] = useState(typeof window !== "undefined" ? window.innerWidth : 1400);
 
-  const alarms = [
-    { time: "11:25", machine: "SV-76S", code: "AL-021", msg: "主軸異常警報" },
-    { time: "10:40", machine: "NV-10", code: "AL-014", msg: "刀庫定位異常" },
-    { time: "09:15", machine: "SV-110S", code: "MT-002", msg: "待料停機" },
-  ];
-
-  const suggestions = [
-    "目前稼動率最低的是哪一台？",
-    "今天哪台機台產量最高？",
-    "有哪些設備發生異常停機？",
-    "Line A 與 Line B 產量差多少？",
-  ];
+  useEffect(() => {
+    const resizeHandler = () => setWindowWidth(window.innerWidth);
+    window.addEventListener("resize", resizeHandler);
+    return () => window.removeEventListener("resize", resizeHandler);
+  }, []);
 
   useEffect(() => {
     const clockTimer = setInterval(() => {
       setNow(new Date());
     }, 1000);
-
     return () => clearInterval(clockTimer);
   }, []);
 
@@ -89,11 +95,9 @@ export default function App() {
           if (machine.name === "SV-110S" && roll > 0.93) {
             newStatus = machine.status === "待機" ? "運轉中" : "待機";
           }
-
           if (machine.name === "NV-10" && roll > 0.96) {
             newStatus = machine.status === "異常停機" ? "待機" : "異常停機";
           }
-
           if (machine.name === "SV-76S" && roll > 0.97) {
             newStatus = machine.status === "異常停機" ? "待機" : "異常停機";
           }
@@ -111,6 +115,9 @@ export default function App() {
     return () => clearInterval(dataTimer);
   }, []);
 
+  const isMobile = windowWidth <= 768;
+  const isTablet = windowWidth > 768 && windowWidth <= 1100;
+
   const selectedMachine = useMemo(() => {
     if (!selectedMachineName) return null;
     return machines.find((m) => m.name === selectedMachineName) || null;
@@ -127,50 +134,30 @@ export default function App() {
       ? machines[selectedMachineIndex + 1]
       : null;
 
-  const totalOutput = useMemo(() => {
-    return machines.reduce((sum, m) => sum + m.output, 0);
-  }, [machines]);
+  const totalOutput = useMemo(() => machines.reduce((sum, m) => sum + m.output, 0), [machines]);
 
   const avgUtil = useMemo(() => {
     const total = machines.reduce((sum, m) => sum + m.util, 0);
     return (total / machines.length).toFixed(1);
   }, [machines]);
 
-  const abnormalMachines = useMemo(() => {
-    return machines.filter((m) => m.status === "異常停機");
-  }, [machines]);
+  const abnormalMachines = useMemo(() => machines.filter((m) => m.status === "異常停機"), [machines]);
+  const abnormalCount = abnormalMachines.length;
+  const idleCount = machines.filter((m) => m.status === "待機").length;
+  const runningCount = machines.filter((m) => m.status === "運轉中").length;
 
-  const abnormalCount = useMemo(() => {
-    return abnormalMachines.length;
-  }, [abnormalMachines]);
+  const lowestUtilMachine = useMemo(() => [...machines].sort((a, b) => a.util - b.util)[0], [machines]);
+  const topOutputMachine = useMemo(() => [...machines].sort((a, b) => b.output - a.output)[0], [machines]);
+  const topOutputMachines = useMemo(() => [...machines].sort((a, b) => b.output - a.output).slice(0, 4), [machines]);
 
-  const idleCount = useMemo(() => {
-    return machines.filter((m) => m.status === "待機").length;
-  }, [machines]);
-
-  const runningCount = useMemo(() => {
-    return machines.filter((m) => m.status === "運轉中").length;
-  }, [machines]);
-
-  const lowestUtilMachine = useMemo(() => {
-    return [...machines].sort((a, b) => a.util - b.util)[0];
-  }, [machines]);
-
-  const topOutputMachine = useMemo(() => {
-    return [...machines].sort((a, b) => b.output - a.output)[0];
-  }, [machines]);
-
-  const topOutputMachines = useMemo(() => {
-    return [...machines].sort((a, b) => b.output - a.output).slice(0, 4);
-  }, [machines]);
-
-  const lineAOutput = useMemo(() => {
-    return machines.filter((m) => m.line === "Line A").reduce((sum, m) => sum + m.output, 0);
-  }, [machines]);
-
-  const lineBOutput = useMemo(() => {
-    return machines.filter((m) => m.line === "Line B").reduce((sum, m) => sum + m.output, 0);
-  }, [machines]);
+  const lineAOutput = useMemo(
+    () => machines.filter((m) => m.line === "Line A").reduce((sum, m) => sum + m.output, 0),
+    [machines]
+  );
+  const lineBOutput = useMemo(
+    () => machines.filter((m) => m.line === "Line B").reduce((sum, m) => sum + m.output, 0),
+    [machines]
+  );
 
   const outputDiff = Math.abs(lineAOutput - lineBOutput);
   const higherLine = lineAOutput >= lineBOutput ? "Line A" : "Line B";
@@ -210,13 +197,6 @@ export default function App() {
     return "#64748b";
   };
 
-  const getStatusBg = (status) => {
-    if (status === "運轉中") return "rgba(34,197,94,0.12)";
-    if (status === "待機") return "rgba(245,158,11,0.12)";
-    if (status === "異常停機") return "rgba(239,68,68,0.12)";
-    return "rgba(100,116,139,0.12)";
-  };
-
   const getBarColor = (value) => {
     if (value >= 80) return "#22c55e";
     if (value >= 65) return "#f59e0b";
@@ -245,7 +225,7 @@ export default function App() {
     marginTop: 0,
     marginBottom: "8px",
     color: "white",
-    fontSize: "26px",
+    fontSize: isMobile ? "22px" : "26px",
     fontWeight: "700",
     letterSpacing: "0.5px",
   };
@@ -253,7 +233,7 @@ export default function App() {
   const cardStyle = {
     background: "#0f1b2d",
     borderRadius: "18px",
-    padding: "24px",
+    padding: isMobile ? "16px" : "24px",
     border: "1px solid #1f2f46",
   };
 
@@ -277,9 +257,7 @@ export default function App() {
       if (abnormalMachines.length === 0) {
         return "目前沒有設備處於異常停機狀態。";
       }
-      return `目前異常停機設備共有 ${abnormalMachines.length} 台，分別為：${abnormalMachines
-        .map((m) => m.name)
-        .join("、")}。`;
+      return `目前異常停機設備共有 ${abnormalMachines.length} 台，分別為：${abnormalMachines.map((m) => m.name).join("、")}。`;
     }
 
     if ((q.includes("LINE A") || q.includes("LINEA")) && q.includes("產量")) {
@@ -326,7 +304,8 @@ export default function App() {
 
   useEffect(() => {
     setCurrentAnswer(buildAiAnswer(currentQuestion));
-  }, [machines]); // eslint-disable-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [machines]);
 
   const handleAiSubmit = (text) => {
     const content = text.trim();
@@ -376,8 +355,8 @@ export default function App() {
         background: "linear-gradient(180deg, #1a2b41 0%, #142338 100%)",
         borderRadius: "18px",
         border: `1px solid ${getStatusColor(machine.status)}`,
-        minHeight: "260px",
-        padding: "16px",
+        minHeight: isMobile ? "220px" : "260px",
+        padding: isMobile ? "14px" : "16px",
         boxShadow: "0 12px 30px rgba(0,0,0,0.22)",
         display: "flex",
         flexDirection: "column",
@@ -390,7 +369,7 @@ export default function App() {
         <div
           style={{
             color: "white",
-            fontSize: "30px",
+            fontSize: isMobile ? "26px" : "30px",
             fontWeight: 700,
             lineHeight: 1.1,
             wordBreak: "break-word",
@@ -445,7 +424,7 @@ export default function App() {
           <div style={{ color: "#cbd5e1", fontSize: "12px", marginBottom: "6px" }}>
             今日產量
           </div>
-          <div style={{ color: "white", fontSize: "22px", fontWeight: 700, lineHeight: 1.1 }}>
+          <div style={{ color: "white", fontSize: isMobile ? "20px" : "22px", fontWeight: 700, lineHeight: 1.1 }}>
             {machine.output}
           </div>
           <div style={{ color: "#94a3b8", fontSize: "12px", marginTop: "4px" }}>件</div>
@@ -462,7 +441,7 @@ export default function App() {
           <div style={{ color: "#cbd5e1", fontSize: "12px", marginBottom: "6px" }}>
             稼動率
           </div>
-          <div style={{ color: "white", fontSize: "22px", fontWeight: 700, lineHeight: 1.1 }}>
+          <div style={{ color: "white", fontSize: isMobile ? "20px" : "22px", fontWeight: 700, lineHeight: 1.1 }}>
             {machine.util}%
           </div>
           <div style={{ color: "#94a3b8", fontSize: "12px", marginTop: "4px" }}>OEE</div>
@@ -518,7 +497,7 @@ export default function App() {
           background: "linear-gradient(180deg, #06101f 0%, #081224 100%)",
           color: "white",
           minHeight: "100vh",
-          padding: "28px",
+          padding: isMobile ? "14px" : "28px",
           fontFamily: "Arial, Microsoft JhengHei, sans-serif",
         }}
       >
@@ -526,37 +505,38 @@ export default function App() {
           <div
             style={{
               display: "flex",
+              flexDirection: isMobile ? "column" : "row",
               justifyContent: "space-between",
-              alignItems: "center",
+              alignItems: isMobile ? "flex-start" : "center",
+              gap: isMobile ? "14px" : "0",
               marginBottom: "24px",
-              padding: "20px 24px",
+              padding: isMobile ? "16px" : "20px 24px",
               background: "#0b1628",
               borderRadius: "18px",
               border: "1px solid #1e293b",
             }}
           >
-            <div>
+            <div style={{ width: "100%" }}>
               <h1
                 style={{
                   margin: 0,
                   color: "white",
-                  fontSize: "38px",
+                  fontSize: isMobile ? "30px" : "38px",
                   fontWeight: "700",
                   letterSpacing: "1px",
+                  lineHeight: 1.15,
                 }}
               >
                 SHINZAWA Smart Factory
               </h1>
-              <div style={{ marginTop: "8px", color: "#cbd5e1", fontSize: "15px" }}>
+              <div style={{ marginTop: "8px", color: "#cbd5e1", fontSize: isMobile ? "13px" : "15px" }}>
                 震澤智慧工廠系統｜AI 半對話展示版
               </div>
             </div>
 
-            <div style={{ textAlign: "right" }}>
-              <div style={{ color: "#94a3b8", fontSize: "13px", marginBottom: "4px" }}>
-                系統時間
-              </div>
-              <div style={{ color: "white", fontSize: "20px", fontWeight: "700" }}>
+            <div style={{ textAlign: isMobile ? "left" : "right", width: isMobile ? "100%" : "auto" }}>
+              <div style={{ color: "#94a3b8", fontSize: "13px", marginBottom: "4px" }}>系統時間</div>
+              <div style={{ color: "white", fontSize: isMobile ? "18px" : "20px", fontWeight: "700" }}>
                 {formatDateTime(now)}
               </div>
               <div style={{ color: "#38bdf8", fontSize: "13px", marginTop: "4px" }}>
@@ -568,7 +548,7 @@ export default function App() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(4, 1fr)",
+              gridTemplateColumns: isMobile ? "1fr" : isTablet ? "1fr 1fr" : "repeat(4, 1fr)",
               gap: "16px",
               marginBottom: "24px",
             }}
@@ -579,17 +559,15 @@ export default function App() {
                 style={{
                   background: "#122033",
                   borderRadius: "16px",
-                  padding: "20px",
+                  padding: isMobile ? "16px" : "20px",
                   border: "1px solid #1f2f46",
                   boxShadow: "0 8px 24px rgba(0,0,0,0.2)",
                 }}
               >
-                <div style={{ color: "#cbd5e1", fontSize: "14px", marginBottom: "10px" }}>
-                  {item.label}
-                </div>
+                <div style={{ color: "#cbd5e1", fontSize: "14px", marginBottom: "10px" }}>{item.label}</div>
                 <div
                   style={{
-                    fontSize: "34px",
+                    fontSize: isMobile ? "30px" : "34px",
                     fontWeight: "700",
                     marginBottom: "8px",
                     color: "white",
@@ -605,7 +583,7 @@ export default function App() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "1.9fr 1fr",
+              gridTemplateColumns: isMobile || isTablet ? "1fr" : "1.9fr 1fr",
               gap: "24px",
             }}
           >
@@ -620,9 +598,9 @@ export default function App() {
                   style={{
                     background: "linear-gradient(180deg, #091321 0%, #0b1422 100%)",
                     borderRadius: "20px",
-                    padding: "24px",
+                    padding: isMobile ? "14px" : "24px",
                     border: "1px solid #223550",
-                    minHeight: "560px",
+                    minHeight: isMobile ? "auto" : "560px",
                     position: "relative",
                     overflow: "hidden",
                   }}
@@ -642,17 +620,17 @@ export default function App() {
                     <div
                       style={{
                         display: "flex",
+                        flexDirection: isMobile ? "column" : "row",
                         justifyContent: "space-between",
-                        alignItems: "center",
+                        alignItems: isMobile ? "flex-start" : "center",
+                        gap: "8px",
                         marginBottom: "18px",
                       }}
                     >
-                      <div style={{ color: "white", fontSize: "22px", fontWeight: 700 }}>
+                      <div style={{ color: "white", fontSize: isMobile ? "20px" : "22px", fontWeight: 700 }}>
                         Factory Layout
                       </div>
-                      <div style={{ color: "#93c5fd", fontSize: "14px" }}>
-                        SHINZAWA Demo Plant
-                      </div>
+                      <div style={{ color: "#93c5fd", fontSize: "14px" }}>SHINZAWA Demo Plant</div>
                     </div>
 
                     <div
@@ -660,18 +638,26 @@ export default function App() {
                         background: "rgba(59,130,246,0.08)",
                         border: "1px solid rgba(59,130,246,0.22)",
                         borderRadius: "18px",
-                        padding: "18px",
+                        padding: isMobile ? "14px" : "18px",
                         marginBottom: "20px",
                       }}
                     >
-                      <div style={{ color: "white", fontSize: "20px", fontWeight: 700, marginBottom: "12px", textAlign: "center" }}>
+                      <div
+                        style={{
+                          color: "white",
+                          fontSize: isMobile ? "18px" : "20px",
+                          fontWeight: 700,
+                          marginBottom: "12px",
+                          textAlign: "center",
+                        }}
+                      >
                         Line A
                       </div>
 
                       <div
                         style={{
                           display: "grid",
-                          gridTemplateColumns: "repeat(3, minmax(220px, 1fr))",
+                          gridTemplateColumns: isMobile ? "1fr" : isTablet ? "1fr 1fr" : "repeat(3, minmax(220px, 1fr))",
                           gap: "16px",
                         }}
                       >
@@ -686,17 +672,25 @@ export default function App() {
                         background: "rgba(16,185,129,0.06)",
                         border: "1px solid rgba(16,185,129,0.18)",
                         borderRadius: "18px",
-                        padding: "18px",
+                        padding: isMobile ? "14px" : "18px",
                       }}
                     >
-                      <div style={{ color: "white", fontSize: "20px", fontWeight: 700, marginBottom: "12px", textAlign: "center" }}>
+                      <div
+                        style={{
+                          color: "white",
+                          fontSize: isMobile ? "18px" : "20px",
+                          fontWeight: 700,
+                          marginBottom: "12px",
+                          textAlign: "center",
+                        }}
+                      >
                         Line B
                       </div>
 
                       <div
                         style={{
                           display: "grid",
-                          gridTemplateColumns: "repeat(3, minmax(220px, 1fr))",
+                          gridTemplateColumns: isMobile ? "1fr" : isTablet ? "1fr 1fr" : "repeat(3, minmax(220px, 1fr))",
                           gap: "16px",
                         }}
                       >
@@ -708,7 +702,7 @@ export default function App() {
                           style={{
                             borderRadius: "18px",
                             border: "1px dashed #334155",
-                            minHeight: "260px",
+                            minHeight: isMobile ? "120px" : "260px",
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
@@ -726,7 +720,7 @@ export default function App() {
                       style={{
                         marginTop: "20px",
                         display: "grid",
-                        gridTemplateColumns: "1fr 1fr 1fr",
+                        gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr 1fr",
                         gap: "16px",
                       }}
                     >
@@ -776,7 +770,13 @@ export default function App() {
                 </div>
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
+                  gap: "24px",
+                }}
+              >
                 <div style={cardStyle}>
                   <h3 style={{ marginTop: 0, marginBottom: "10px", color: "white", fontSize: "22px", fontWeight: 700 }}>
                     即時警報列表
@@ -790,11 +790,11 @@ export default function App() {
                       key={`${item.time}-${item.machine}`}
                       style={{
                         display: "grid",
-                        gridTemplateColumns: "80px 100px 90px 1fr",
+                        gridTemplateColumns: isMobile ? "1fr" : "80px 100px 90px 1fr",
                         gap: "10px",
                         background: "#16253a",
                         borderRadius: "12px",
-                        padding: "14px 14px",
+                        padding: "14px",
                         marginTop: "12px",
                         alignItems: "center",
                       }}
@@ -846,7 +846,7 @@ export default function App() {
                 <div
                   style={{
                     display: "grid",
-                    gridTemplateColumns: "1fr auto",
+                    gridTemplateColumns: isMobile ? "1fr" : "1fr auto",
                     gap: "10px",
                     marginTop: "18px",
                   }}
@@ -880,6 +880,7 @@ export default function App() {
                       padding: "12px 16px",
                       cursor: "pointer",
                       fontWeight: 700,
+                      width: isMobile ? "100%" : "auto",
                     }}
                   >
                     送出
@@ -894,10 +895,8 @@ export default function App() {
                     marginTop: "16px",
                   }}
                 >
-                  <div style={{ color: "#93c5fd", fontSize: "13px", marginBottom: "8px" }}>
-                    使用者提問
-                  </div>
-                  <div style={{ color: "white", fontSize: "16px", fontWeight: "700" }}>
+                  <div style={{ color: "#93c5fd", fontSize: "13px", marginBottom: "8px" }}>使用者提問</div>
+                  <div style={{ color: "white", fontSize: "16px", fontWeight: "700", lineHeight: 1.6 }}>
                     {currentQuestion}
                   </div>
                 </div>
@@ -911,18 +910,14 @@ export default function App() {
                     marginTop: "16px",
                   }}
                 >
-                  <div style={{ color: "#38bdf8", fontSize: "13px", marginBottom: "10px" }}>
-                    系統回答
-                  </div>
-                  <div style={{ color: "white", lineHeight: "1.9", fontSize: "15px" }}>
+                  <div style={{ color: "#38bdf8", fontSize: "13px", marginBottom: "10px" }}>系統回答</div>
+                  <div style={{ color: "white", lineHeight: "1.9", fontSize: "15px", wordBreak: "break-word" }}>
                     {currentAnswer}
                   </div>
                 </div>
 
                 <div style={{ marginTop: "22px" }}>
-                  <div style={{ color: "#cbd5e1", fontSize: "14px", marginBottom: "10px" }}>
-                    建議問題
-                  </div>
+                  <div style={{ color: "#cbd5e1", fontSize: "14px", marginBottom: "10px" }}>建議問題</div>
 
                   {suggestions.map((q) => (
                     <button
@@ -939,6 +934,7 @@ export default function App() {
                         border: currentQuestion === q ? "1px solid #2563eb" : "1px solid transparent",
                         cursor: "pointer",
                         textAlign: "left",
+                        lineHeight: 1.6,
                       }}
                     >
                       {q}
@@ -968,10 +964,11 @@ export default function App() {
                         color: "white",
                         display: "flex",
                         justifyContent: "space-between",
+                        gap: "12px",
                       }}
                     >
                       <span>{label}</span>
-                      <b style={{ color }}>{value}</b>
+                      <b style={{ color, whiteSpace: "nowrap" }}>{value}</b>
                     </div>
                   ))}
                 </div>
@@ -982,9 +979,7 @@ export default function App() {
                   即時排行
                 </h3>
 
-                <div style={{ color: "#cbd5e1", fontSize: "14px", marginBottom: "10px" }}>
-                  模擬資料每 3 秒重新計算
-                </div>
+                <div style={{ color: "#cbd5e1", fontSize: "14px", marginBottom: "10px" }}>模擬資料每 3 秒重新計算</div>
 
                 {topOutputMachines.map((machine, index) => (
                   <div
@@ -996,11 +991,13 @@ export default function App() {
                       marginTop: "12px",
                       display: "flex",
                       justifyContent: "space-between",
+                      alignItems: "center",
+                      gap: "12px",
                       color: "white",
                     }}
                   >
                     <span>{index + 1}. {machine.name}</span>
-                    <b style={{ color: "#22c55e" }}>{machine.output} 件</b>
+                    <b style={{ color: "#22c55e", whiteSpace: "nowrap" }}>{machine.output} 件</b>
                   </div>
                 ))}
               </div>
@@ -1017,21 +1014,23 @@ export default function App() {
             inset: 0,
             background: "rgba(2, 6, 23, 0.76)",
             display: "flex",
-            alignItems: "center",
+            alignItems: isMobile ? "stretch" : "center",
             justifyContent: "center",
             zIndex: 9999,
-            padding: "24px",
+            padding: isMobile ? "0" : "24px",
           }}
         >
           <div
             onClick={(e) => e.stopPropagation()}
             style={{
-              width: "min(860px, 100%)",
+              width: isMobile ? "100%" : "min(860px, 100%)",
+              height: isMobile ? "100vh" : "auto",
+              maxHeight: isMobile ? "100vh" : "90vh",
+              overflowY: "auto",
               background: "linear-gradient(180deg, #0f1b2d 0%, #0b1628 100%)",
-              borderRadius: "22px",
+              borderRadius: isMobile ? "0" : "22px",
               border: `1px solid ${getStatusColor(selectedMachine.status)}`,
               boxShadow: "0 20px 60px rgba(0,0,0,0.45)",
-              overflow: "hidden",
             }}
           >
             <div
@@ -1039,12 +1038,16 @@ export default function App() {
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "center",
-                padding: "20px 24px",
+                padding: isMobile ? "16px" : "20px 24px",
                 borderBottom: "1px solid #1f2f46",
+                position: "sticky",
+                top: 0,
+                background: "linear-gradient(180deg, #0f1b2d 0%, #0b1628 100%)",
+                zIndex: 2,
               }}
             >
               <div>
-                <div style={{ color: "white", fontSize: "30px", fontWeight: 700 }}>
+                <div style={{ color: "white", fontSize: isMobile ? "24px" : "30px", fontWeight: 700 }}>
                   {selectedMachine.name}
                 </div>
                 <div style={{ color: "#93c5fd", fontSize: "14px", marginTop: "6px" }}>
@@ -1063,17 +1066,18 @@ export default function App() {
                   color: "white",
                   fontSize: "20px",
                   cursor: "pointer",
+                  flexShrink: 0,
                 }}
               >
                 ×
               </button>
             </div>
 
-            <div style={{ padding: "24px" }}>
+            <div style={{ padding: isMobile ? "16px" : "24px" }}>
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "1fr auto auto auto",
+                  gridTemplateColumns: isMobile ? "1fr 1fr" : "1fr auto auto auto",
                   gap: "12px",
                   alignItems: "center",
                   marginBottom: "18px",
@@ -1085,8 +1089,9 @@ export default function App() {
                   onKeyDown={(e) => {
                     if (e.key === "Enter") handleSearch();
                   }}
-                  placeholder="輸入機台號碼，例如 SV-1165"
+                  placeholder="輸入機台號碼"
                   style={{
+                    gridColumn: isMobile ? "1 / -1" : "auto",
                     width: "100%",
                     background: "#0b1220",
                     border: "1px solid #24354e",
@@ -1164,47 +1169,26 @@ export default function App() {
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "1fr 1fr 1fr",
+                  gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr 1fr",
                   gap: "14px",
                   marginBottom: "18px",
                 }}
               >
-                <div
-                  style={{
-                    background: "#0b1220",
-                    borderRadius: "14px",
-                    padding: "14px",
-                    border: "1px solid #24354e",
-                  }}
-                >
+                <div style={{ background: "#0b1220", borderRadius: "14px", padding: "14px", border: "1px solid #24354e" }}>
                   <div style={{ color: "#cbd5e1", fontSize: "12px" }}>今日產量</div>
                   <div style={{ color: "white", fontSize: "24px", fontWeight: 700, marginTop: "8px" }}>
                     {selectedMachine.output} 件
                   </div>
                 </div>
 
-                <div
-                  style={{
-                    background: "#0b1220",
-                    borderRadius: "14px",
-                    padding: "14px",
-                    border: "1px solid #24354e",
-                  }}
-                >
+                <div style={{ background: "#0b1220", borderRadius: "14px", padding: "14px", border: "1px solid #24354e" }}>
                   <div style={{ color: "#cbd5e1", fontSize: "12px" }}>稼動率</div>
                   <div style={{ color: "white", fontSize: "24px", fontWeight: 700, marginTop: "8px" }}>
                     {selectedMachine.util}%
                   </div>
                 </div>
 
-                <div
-                  style={{
-                    background: "#0b1220",
-                    borderRadius: "14px",
-                    padding: "14px",
-                    border: "1px solid #24354e",
-                  }}
-                >
+                <div style={{ background: "#0b1220", borderRadius: "14px", padding: "14px", border: "1px solid #24354e" }}>
                   <div style={{ color: "#cbd5e1", fontSize: "12px" }}>估計停機時間</div>
                   <div style={{ color: "white", fontSize: "24px", fontWeight: 700, marginTop: "8px" }}>
                     {selectedMachineDetail.estimatedDowntime}
@@ -1212,44 +1196,18 @@ export default function App() {
                 </div>
               </div>
 
-              <div
-                style={{
-                  background: "#16253a",
-                  borderRadius: "14px",
-                  padding: "16px",
-                  marginBottom: "14px",
-                }}
-              >
-                <div style={{ color: "#cbd5e1", fontSize: "13px", marginBottom: "8px" }}>
-                  模擬停機 / 狀態原因
-                </div>
+              <div style={{ background: "#16253a", borderRadius: "14px", padding: "16px", marginBottom: "14px" }}>
+                <div style={{ color: "#cbd5e1", fontSize: "13px", marginBottom: "8px" }}>模擬停機 / 狀態原因</div>
                 <div style={{ color: "white", lineHeight: 1.8 }}>{selectedMachineDetail.reason}</div>
               </div>
 
-              <div
-                style={{
-                  background: "#16253a",
-                  borderRadius: "14px",
-                  padding: "16px",
-                  marginBottom: "14px",
-                }}
-              >
-                <div style={{ color: "#cbd5e1", fontSize: "13px", marginBottom: "8px" }}>
-                  建議動作
-                </div>
+              <div style={{ background: "#16253a", borderRadius: "14px", padding: "16px", marginBottom: "14px" }}>
+                <div style={{ color: "#cbd5e1", fontSize: "13px", marginBottom: "8px" }}>建議動作</div>
                 <div style={{ color: "white", lineHeight: 1.8 }}>{selectedMachineDetail.action}</div>
               </div>
 
-              <div
-                style={{
-                  background: "#16253a",
-                  borderRadius: "14px",
-                  padding: "16px",
-                }}
-              >
-                <div style={{ color: "#cbd5e1", fontSize: "13px", marginBottom: "10px" }}>
-                  最近警報明細
-                </div>
+              <div style={{ background: "#16253a", borderRadius: "14px", padding: "16px" }}>
+                <div style={{ color: "#cbd5e1", fontSize: "13px", marginBottom: "10px" }}>最近警報明細</div>
 
                 {selectedMachineDetail.alarmHistory.map((item, index) => (
                   <div
@@ -1260,7 +1218,7 @@ export default function App() {
                       padding: "12px 14px",
                       marginBottom: "10px",
                       display: "grid",
-                      gridTemplateColumns: "80px 110px 1fr 90px",
+                      gridTemplateColumns: isMobile ? "1fr" : "80px 110px 1fr 90px",
                       gap: "10px",
                       alignItems: "center",
                     }}
@@ -1272,7 +1230,7 @@ export default function App() {
                       style={{
                         color: getAlarmStatusColor(item.status),
                         fontWeight: 700,
-                        textAlign: "right",
+                        textAlign: isMobile ? "left" : "right",
                       }}
                     >
                       {item.status}
