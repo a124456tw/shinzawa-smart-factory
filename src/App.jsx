@@ -1123,7 +1123,7 @@ const styles = {
   subtitle: {
     color: "#ffffff",
     marginTop: "6px",
-    fontSize: "14px",
+    fontSize: "20px",
   },
   timeCard: {
     background: "rgba(15, 23, 42, 0.75)",
@@ -1137,7 +1137,7 @@ const styles = {
   },
   timeLabel: {
     color: "#ffffff",
-    fontSize: "13px",
+    fontSize: "19px",
     marginBottom: "4px",
   },
   timeValue: {
@@ -1165,7 +1165,7 @@ const styles = {
   },
   kpiLabel: {
     color: "#ffffff",
-    fontSize: "13px",
+    fontSize: "19px",
     marginBottom: "10px",
   },
   kpiValue: {
@@ -1219,7 +1219,7 @@ const styles = {
   },
   panelDesc: {
     color: "#ffffff",
-    fontSize: "14px",
+    fontSize: "20px",
     marginTop: "6px",
   },
   monitorToolbar: {
@@ -1244,7 +1244,7 @@ const styles = {
   },
   toolbarLabel: {
     color: "#ffffff",
-    fontSize: "14px",
+    fontSize: "20px",
     marginRight: "4px",
   },
   modeButton: {
@@ -1254,7 +1254,7 @@ const styles = {
     borderRadius: "10px",
     padding: "8px 14px",
     cursor: "pointer",
-    fontSize: "14px",
+    fontSize: "20px",
   },
   activeModeButton: {
     background: "#2563eb",
@@ -1263,7 +1263,7 @@ const styles = {
     borderRadius: "10px",
     padding: "8px 14px",
     cursor: "pointer",
-    fontSize: "14px",
+    fontSize: "20px",
     fontWeight: 700,
   },
   lineButton: {
@@ -1273,7 +1273,7 @@ const styles = {
     borderRadius: "10px",
     padding: "8px 14px",
     cursor: "pointer",
-    fontSize: "14px",
+    fontSize: "20px",
   },
   activeLineButton: {
     background: "#0ea5e9",
@@ -1282,7 +1282,7 @@ const styles = {
     borderRadius: "10px",
     padding: "8px 14px",
     cursor: "pointer",
-    fontSize: "14px",
+    fontSize: "20px",
     fontWeight: 700,
   },
   lineSummaryCard: {
@@ -1313,7 +1313,7 @@ const styles = {
   },
   summaryLabel: {
     color: "#ffffff",
-    fontSize: "13px",
+    fontSize: "19px",
     marginBottom: "6px",
   },
   summaryValue: {
@@ -1333,7 +1333,7 @@ const styles = {
     background: "#0b1220",
     color: "#ffffff",
     outline: "none",
-    fontSize: "14px",
+    fontSize: "20px",
   },
   factoryMap: {
     display: "flex",
@@ -1361,7 +1361,7 @@ const styles = {
   },
   lineSectionCount: {
     color: "#ffffff",
-    fontSize: "14px",
+    fontSize: "20px",
   },
   machineGrid: {
     display: "grid",
@@ -1400,7 +1400,7 @@ const styles = {
   },
   machineMeta: {
     color: "#ffffff",
-    fontSize: "13px",
+    fontSize: "19px",
     marginBottom: "12px",
     wordBreak: "break-word",
   },
@@ -1412,11 +1412,11 @@ const styles = {
   },
   machineInfoLabel: {
     color: "#ffffff",
-    fontSize: "13px",
+    fontSize: "19px",
   },
   machineInfoValue: {
     color: "#ffffff",
-    fontSize: "13px",
+    fontSize: "19px",
     fontWeight: 600,
     textAlign: "right",
     wordBreak: "break-word",
@@ -1433,7 +1433,7 @@ const styles = {
     textAlign: "left",
     padding: "12px",
     color: "#ffffff",
-    fontSize: "13px",
+    fontSize: "19px",
     fontWeight: 600,
     borderBottom: "1px solid rgba(148,163,184,0.14)",
     whiteSpace: "nowrap",
@@ -1454,7 +1454,7 @@ const styles = {
     padding: "4px 10px",
     borderRadius: "999px",
     border: "1px solid transparent",
-    fontSize: "13px",
+    fontSize: "19px",
     fontWeight: 700,
     whiteSpace: "nowrap",
   },
@@ -1470,7 +1470,7 @@ const styles = {
     color: "#ffffff",
     borderRadius: "999px",
     padding: "9px 12px",
-    fontSize: "13px",
+    fontSize: "19px",
     cursor: "pointer",
   },
   chatBox: {
@@ -1491,7 +1491,7 @@ const styles = {
     padding: "12px 14px",
     borderRadius: "14px",
     lineHeight: 1.6,
-    fontSize: "14px",
+    fontSize: "19px",
     whiteSpace: "pre-wrap",
     color: "#ffffff",
     wordBreak: "break-word",
@@ -1519,7 +1519,7 @@ const styles = {
     background: "#0b1220",
     color: "#ffffff",
     outline: "none",
-    fontSize: "14px",
+    fontSize: "20px",
     boxSizing: "border-box",
   },
   sendButton: {
@@ -1552,13 +1552,13 @@ const styles = {
   },
   alertFeedMachine: {
     fontWeight: 700,
-    fontSize: "14px",
+    fontSize: "20px",
     color: "#ffffff",
     wordBreak: "break-word",
   },
   alertFeedTime: {
     color: "#ffffff",
-    fontSize: "13px",
+    fontSize: "19px",
     whiteSpace: "nowrap",
   },
   alertFeedMeta: {
@@ -1569,16 +1569,16 @@ const styles = {
   },
   alertFeedLine: {
     color: "#ffffff",
-    fontSize: "13px",
+    fontSize: "19px",
   },
   alertFeedCode: {
     color: "#f59e0b",
-    fontSize: "13px",
+    fontSize: "19px",
     fontWeight: 700,
   },
   alertFeedMessage: {
     color: "#ffffff",
-    fontSize: "14px",
+    fontSize: "20px",
     lineHeight: 1.5,
     wordBreak: "break-word",
   },
@@ -1613,7 +1613,7 @@ const styles = {
   },
   roadmapText: {
     color: "#ffffff",
-    fontSize: "14px",
+    fontSize: "20px",
     lineHeight: 1.5,
     wordBreak: "break-word",
   },
@@ -1662,7 +1662,7 @@ const styles = {
   modalSubtitle: {
     color: "#ffffff",
     marginTop: "6px",
-    fontSize: "14px",
+    fontSize: "20px",
     wordBreak: "break-word",
   },
   closeButton: {
@@ -1693,7 +1693,7 @@ const styles = {
     background: "#0b1220",
     color: "#ffffff",
     outline: "none",
-    fontSize: "14px",
+    fontSize: "20px",
     boxSizing: "border-box",
   },
   modalNavButtons: {
@@ -1708,7 +1708,7 @@ const styles = {
     borderRadius: "12px",
     padding: "0 14px",
     cursor: "pointer",
-    fontSize: "14px",
+    fontSize: "20px",
     minHeight: "44px",
   },
   detailSection: {
@@ -1741,12 +1741,12 @@ const styles = {
   },
   detailLabel: {
     color: "#ffffff",
-    fontSize: "13px",
+    fontSize: "19px",
     marginBottom: "6px",
   },
   detailValue: {
     color: "#ffffff",
-    fontSize: "15px",
+    fontSize: "20px",
     lineHeight: 1.5,
     wordBreak: "break-word",
   },
@@ -1767,24 +1767,24 @@ const styles = {
   },
   alertTime: {
     color: "#ffffff",
-    fontSize: "14px",
+    fontSize: "20px",
     whiteSpace: "nowrap",
   },
   alertCode: {
     color: "#f59e0b",
-    fontSize: "14px",
+    fontSize: "20px",
     fontWeight: 700,
     whiteSpace: "nowrap",
   },
   alertMessage: {
     color: "#ffffff",
-    fontSize: "14px",
+    fontSize: "20px",
     lineHeight: 1.5,
     wordBreak: "break-word",
   },
   noAlertText: {
     color: "#ffffff",
-    fontSize: "14px",
+    fontSize: "20px",
   },
 };
 
